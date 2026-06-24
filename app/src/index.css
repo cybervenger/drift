@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..500;1,9..144,300..450&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Chrome stays near-invisible so the scene supplies all the color. */
+  --drift-black: #0a0a0b;
+  --drift-warm-white: #f5f1e8;
+  --drift-muted: #8b8578;
+  --drift-muted-dim: #5a564d;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  background: var(--drift-black);
+}
+
+body {
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button {
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--drift-warm-white);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

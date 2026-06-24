@@ -1,0 +1,70 @@
+.now-playing-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.75rem 6%;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--drift-muted);
+  opacity: 0.85;
+  transition: opacity 0.4s ease;
+}
+
+.now-playing-bar__info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.now-playing-bar__status {
+  font-size: 0.7rem;
+  color: var(--drift-warm-white);
+  opacity: 0.7;
+}
+
+.now-playing-bar__track {
+  color: var(--drift-warm-white);
+  opacity: 0.9;
+}
+
+.now-playing-bar__sep {
+  opacity: 0.5;
+}
+
+.now-playing-bar__toggle {
+  background: transparent;
+  border: 1px solid var(--drift-muted-dim);
+  color: var(--drift-muted);
+  font-size: 0.75rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  transition: border-color 0.3s ease, color 0.3s ease;
+}
+
+.now-playing-bar__toggle:hover {
+  border-color: var(--drift-warm-white);
+  color: var(--drift-warm-white);
+}
+
+@media (max-width: 640px) {
+  .now-playing-bar {
+    padding: 1.25rem 5%;
+  }
+
+  .now-playing-bar__artist {
+    display: none;
+  }
+
+  .now-playing-bar__sep {
+    display: none;
+  }
+}

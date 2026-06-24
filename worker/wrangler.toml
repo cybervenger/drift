@@ -1,0 +1,6 @@
+name = "drift-mood-proxy"
+main = "src/index.js"
+compatibility_date = "2026-06-24"
+
+# GEMINI_API_KEY is set as a secret, never here:
+#   wrangler secret put GEMINI_API_KEY

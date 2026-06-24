@@ -1,0 +1,30 @@
+.drift-stage {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.state-message {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--drift-muted);
+  background: var(--drift-black);
+}
+
+.state-message--error {
+  color: #e07a5f;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.state-message__hint {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}

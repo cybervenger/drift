@@ -147,21 +147,6 @@ function App() {
 }
 
 export default App;
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import './App.css';
-import { isLoggedIn } from './auth/config';
-import { useSpotifyToken } from './auth/useSpotifyToken';
-import { useSpotifyPlayer, transferPlaybackHere } from './spotify/useSpotifyPlayer';
-import { fetchLyrics, getActiveLyricIndex } from './lyrics/lrclib';
-import { extractDominantColors } from './scenes/extractColors';
-import { resolveTrackPreset } from './mood/moodPreset';
-import { logPlayEvent } from './spotify/playEventLog';
-
-import { LoginScreen } from './components/LoginScreen';
-import { CallbackScreen } from './components/CallbackScreen';
-import { SceneBackground } from './components/SceneBackground';
-import { LyricsOverlay } from './components/LyricsOverlay';
-import { NowPlayingBar } from './components/NowPlayingBar';
 
 function MainApp() {
   const getValidToken = useSpotifyToken();

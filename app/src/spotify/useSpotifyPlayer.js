@@ -1,3 +1,4 @@
+// Drift Spotify Player hook
 import { useEffect, useRef, useState } from 'react';
 
 const SDK_SRC = 'https://sdk.scdn.co/spotify-player.js';

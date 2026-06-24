@@ -18,55 +18,39 @@ function MainApp() {
   const getValidToken = useSpotifyToken();
   const player = useSpotifyPlayer(getValidToken);
 
-  const [viewMode, setViewMode] = useState('lyrics'); // 'lyrics' | 'visual'
+  const [viewMode, setViewMode] = useState('lyrics');
   const [lyricsState, setLyricsState] = useState({ synced: null, plain: null });
   const [preset, setPreset] = useState(null);
   const [hasTransferred, setHasTransferred] = useState(false);
 
   const { currentTrack, isReady, deviceId, isPlaying, progressMs, durationMs, error } = player;
 
-  // Once the SDK device is ready, move playback here so the app actually
-  // becomes the active Spotify Connect target.
   useEffect(() => {
     if (isReady && deviceId && !hasTransferred) {
       transferPlaybackHere(getValidToken, deviceId)
         .then(() => setHasTransferred(true))
-        .catch(() => {
-          /* user can still press play from another device manually */
-        });
+        .catch(() => {});
     }
   }, [isReady, deviceId, hasTransferred, getValidToken]);
 
-  // Re-resolve lyrics + mood preset whenever the track actually changes.
   useEffect(() => {
     if (!currentTrack) return;
-
     logPlayEvent('track_started', currentTrack);
-
     let cancelled = false;
-
     fetchLyrics({
       trackName: currentTrack.name,
       artistName: currentTrack.artists[0],
       albumName: currentTrack.albumName,
       durationSec: durationMs / 1000,
     })
-      .then((result) => {
-        if (!cancelled) setLyricsState(result);
-      })
-      .catch(() => {
-        if (!cancelled) setLyricsState({ synced: null, plain: null });
-      });
+      .then((result) => { if (!cancelled) setLyricsState(result); })
+      .catch(() => { if (!cancelled) setLyricsState({ synced: null, plain: null }); });
 
     extractDominantColors(currentTrack.albumArt)
       .then((colors) => resolveTrackPreset(currentTrack, colors))
-      .then((resolved) => {
-        if (!cancelled) setPreset(resolved);
-      });
+      .then((resolved) => { if (!cancelled) setPreset(resolved); });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);
 
@@ -84,9 +68,7 @@ function MainApp() {
       <div className="state-message state-message--error">
         {error.message}
         {error.message.includes('Premium') && (
-          <p className="state-message__hint">
-            Drift's playback requires Spotify Premium.
-          </p>
+          <p className="state-message__hint">Drift's playback requires Spotify Premium.</p>
         )}
       </div>
     );
@@ -124,7 +106,10 @@ function MainApp() {
 
 function App() {
   const [route, setRoute] = useState(() =>
-    new URLSearchParams(window.location.search).has('code') || new URLSearchParams(window.location.search).has('error') ? 'callback' : 'home'
+    new URLSearchParams(window.location.search).has('code') ||
+    new URLSearchParams(window.location.search).has('error')
+      ? 'callback'
+      : 'home'
   );
   const [loggedIn, setLoggedIn] = useState(isLoggedIn);
 
@@ -147,111 +132,3 @@ function App() {
 }
 
 export default App;
-
-function MainApp() {
-  const getValidToken = useSpotifyToken();
-  const player = useSpotifyPlayer(getValidToken);
-
-  const [viewMode, setViewMode] = useState('lyrics'); // 'lyrics' | 'visual'
-  const [lyricsState, setLyricsState] = useState({ synced: null, plain: null });
-  const [preset, setPreset] = useState(null);
-  const [hasTransferred, setHasTransferred] = useState(false);
-
-  const { currentTrack, isReady, deviceId, isPlaying, progressMs, durationMs, error } = player;
-
-  // Once the SDK device is ready, move playback here so the app actually
-  // becomes the active Spotify Connect target.
-  useEffect(() => {
-    if (isReady && deviceId && !hasTransferred) {
-      transferPlaybackHere(getValidToken, deviceId)
-        .then(() => setHasTransferred(true))
-        .catch(() => {
-          /* user can still press play from another device manually */
-        });
-    }
-  }, [isReady, deviceId, hasTransferred, getValidToken]);
-
-  // Re-resolve lyrics + mood preset whenever the track actually changes.
-  useEffect(() => {
-    if (!currentTrack) return;
-
-    logPlayEvent('track_started', currentTrack);
-
-    let cancelled = false;
-
-    fetchLyrics({
-      trackName: currentTrack.name,
-      artistName: currentTrack.artists[0],
-      albumName: currentTrack.albumName,
-      durationSec: durationMs / 1000,
-    })
-      .then((result) => {
-        if (!cancelled) setLyricsState(result);
-      })
-      .catch(() => {
-        if (!cancelled) setLyricsState({ synced: null, plain: null });
-      });
-
-    extractDominantColors(currentTrack.albumArt)
-      .then((colors) => resolveTrackPreset(currentTrack, colors))
-      .then((resolved) => {
-        if (!cancelled) setPreset(resolved);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTrack?.id]);
-
-  const activeLyricIndex = useMemo(
-    () => getActiveLyricIndex(lyricsState.synced, progressMs),
-    [lyricsState.synced, progressMs]
-  );
-
-  const handleToggleView = useCallback(() => {
-    setViewMode((m) => (m === 'lyrics' ? 'visual' : 'lyrics'));
-  }, []);
-
-  if (error) {
-    return (
-      <div className="state-message state-message--error">
-        {error.message}
-        {error.message.includes('Premium') && (
-          <p className="state-message__hint">
-            Drift's playback requires Spotify Premium.
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  if (!currentTrack) {
-    return (
-      <div className="state-message">
-        {isReady
-          ? 'Connected. Start playing something on Spotify to bring Drift to life.'
-          : 'Connecting to Spotify…'}
-      </div>
-    );
-  }
-
-  return (
-    <div className="drift-stage">
-      <SceneBackground scene={preset?.scene} />
-      <NowPlayingBar
-        track={currentTrack}
-        isPlaying={isPlaying}
-        onToggleView={handleToggleView}
-        viewMode={viewMode}
-      />
-      {viewMode === 'lyrics' && (
-        <LyricsOverlay
-          syncedLines={lyricsState.synced}
-          activeIndex={activeLyricIndex}
-          plainFallback={lyricsState.plain}
-        />
-      )}
-    </div>
-  );
-}

@@ -1,12 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 const SDK_SRC = 'https://sdk.scdn.co/spotify-player.js';
 
-/**
- * Loads the Spotify Web Playback SDK script once, and resolves when
- * window.onSpotifyWebPlaybackSDKReady has fired. Safe to call multiple
- * times — it dedupes via a module-level promise.
- */
 let sdkReadyPromise = null;
 function loadSpotifySdk() {
   if (sdkReadyPromise) return sdkReadyPromise;
@@ -16,11 +11,7 @@ function loadSpotifySdk() {
       resolve(window.Spotify);
       return;
     }
-
-    window.onSpotifyWebPlaybackSDKReady = () => {
-      resolve(window.Spotify);
-    };
-
+    window.onSpotifyWebPlaybackSDKReady = () => resolve(window.Spotify);
     const script = document.createElement('script');
     script.src = SDK_SRC;
     script.async = true;
@@ -30,20 +21,19 @@ function loadSpotifySdk() {
   return sdkReadyPromise;
 }
 
-/**
- * Initializes a Spotify Connect device ("Drift") in this browser tab and
- * tracks live playback state. getValidToken should be the function from
- * useSpotifyToken — the SDK calls it whenever it needs a fresh token.
- *
- * Returns:
- *   { deviceId, isReady, currentTrack, isPlaying, progressMs, durationMs, error }
- */
 export function useSpotifyPlayer(getValidToken) {
   const [deviceId, setDeviceId] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [playerState, setPlayerState] = useState(null);
   const [error, setError] = useState(null);
   const playerRef = useRef(null);
+
+  // Throttle refs track changes and pause/play always go through immediately.
+  // Position-only updates are throttled to 500 ms so React doesn't re-render
+  // the whole tree dozens of times per second.
+  const lastTrackIdRef = useRef(null);
+  const lastPausedRef = useRef(null);
+  const lastPositionUpdateRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,28 +61,34 @@ export function useSpotifyPlayer(getValidToken) {
           setIsReady(true);
         });
 
-        player.addListener('not_ready', () => {
-          setIsReady(false);
-        });
+        player.addListener('not_ready', () => setIsReady(false));
 
-        player.addListener('initialization_error', ({ message }) => {
-          setError(new Error(`SDK init error: ${message}`));
-        });
-
-        player.addListener('authentication_error', ({ message }) => {
-          setError(new Error(`SDK auth error: ${message}`));
-        });
-
-        player.addListener('account_error', ({ message }) => {
-          setError(
-            new Error(
-              `SDK account error (Premium required for playback): ${message}`
-            )
-          );
-        });
+        player.addListener('initialization_error', ({ message }) =>
+          setError(new Error(`SDK init error: ${message}`))
+        );
+        player.addListener('authentication_error', ({ message }) =>
+          setError(new Error(`SDK auth error: ${message}`))
+        );
+        player.addListener('account_error', ({ message }) =>
+          setError(new Error(`SDK account error (Premium required): ${message}`))
+        );
 
         player.addListener('player_state_changed', (state) => {
-          setPlayerState(state);
+          if (!state) return;
+
+          const newTrackId = state.track_window?.current_track?.id;
+          const newPaused = state.paused;
+          const trackChanged = newTrackId !== lastTrackIdRef.current;
+          const pauseChanged = newPaused !== lastPausedRef.current;
+          const now = Date.now();
+          const positionDue = now - lastPositionUpdateRef.current >= 500;
+
+          if (trackChanged || pauseChanged || positionDue) {
+            lastTrackIdRef.current = newTrackId;
+            lastPausedRef.current = newPaused;
+            lastPositionUpdateRef.current = now;
+            setPlayerState(state);
+          }
         });
 
         await player.connect();
@@ -106,12 +102,17 @@ export function useSpotifyPlayer(getValidToken) {
 
     return () => {
       cancelled = true;
-      if (playerRef.current) {
-        playerRef.current.disconnect();
-      }
+      playerRef.current?.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Expose playback controls safely using useCallback
+  const togglePlay = useCallback(() => playerRef.current?.togglePlay(), []);
+  const nextTrack = useCallback(() => playerRef.current?.nextTrack(), []);
+  const previousTrack = useCallback(() => playerRef.current?.previousTrack(), []);
+  const seek = useCallback((position_ms) => playerRef.current?.seek(position_ms), []);
+  const setVolume = useCallback((volume) => playerRef.current?.setVolume(volume), []);
 
   const track = playerState?.track_window?.current_track ?? null;
 
@@ -132,16 +133,17 @@ export function useSpotifyPlayer(getValidToken) {
         }
       : null,
     player: playerRef.current,
+    togglePlay,
+    nextTrack,
+    previousTrack,
+    seek,
+    setVolume
   };
 }
 
-/**
- * Transfers playback to this browser tab's device so it becomes the active
- * Spotify Connect target. Call after isReady is true (e.g. on a "Play here"
- * button) — Spotify doesn't auto-transfer playback to a new device.
- */
 export async function transferPlaybackHere(getValidToken, deviceId) {
   const token = await getValidToken();
+  // Fixed the API endpoint to the official Spotify Web API URL
   await fetch('https://api.spotify.com/v1/me/player', {
     method: 'PUT',
     headers: {

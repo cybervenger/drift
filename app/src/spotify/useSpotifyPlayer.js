@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const SDK_SRC = 'https://sdk.scdn.co/spotify-player.js';
 
@@ -28,8 +28,8 @@ export function useSpotifyPlayer(getValidToken) {
   const [error, setError] = useState(null);
   const playerRef = useRef(null);
 
-  // Throttle refs track changes and pause/play always go through immediately.
-  // Position-only updates are throttled to 500 ms so React doesn't re-render
+  // Throttle refs — track changes and pause/play always go through immediately;
+  // position-only updates are throttled to 500 ms so React doesn't re-render
   // the whole tree dozens of times per second.
   const lastTrackIdRef = useRef(null);
   const lastPausedRef = useRef(null);
@@ -107,13 +107,6 @@ export function useSpotifyPlayer(getValidToken) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Expose playback controls safely using useCallback
-  const togglePlay = useCallback(() => playerRef.current?.togglePlay(), []);
-  const nextTrack = useCallback(() => playerRef.current?.nextTrack(), []);
-  const previousTrack = useCallback(() => playerRef.current?.previousTrack(), []);
-  const seek = useCallback((position_ms) => playerRef.current?.seek(position_ms), []);
-  const setVolume = useCallback((volume) => playerRef.current?.setVolume(volume), []);
-
   const track = playerState?.track_window?.current_track ?? null;
 
   return {
@@ -133,17 +126,11 @@ export function useSpotifyPlayer(getValidToken) {
         }
       : null,
     player: playerRef.current,
-    togglePlay,
-    nextTrack,
-    previousTrack,
-    seek,
-    setVolume
   };
 }
 
 export async function transferPlaybackHere(getValidToken, deviceId) {
   const token = await getValidToken();
-  // Fixed the API endpoint to the official Spotify Web API URL
   await fetch('https://api.spotify.com/v1/me/player', {
     method: 'PUT',
     headers: {

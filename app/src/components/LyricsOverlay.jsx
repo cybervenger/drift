@@ -27,13 +27,20 @@ export function LyricsOverlay({ syncedLines, activeIndex, plainFallback }) {
   return (
     <div className="lyrics-overlay">
       {prev?.text && (
-        <p className="lyrics-overlay__line lyrics-overlay__line--prev">{prev.text}</p>
+        <p key={`prev-${prev.timeMs}`} className="lyrics-overlay__line lyrics-overlay__line--prev">
+          {prev.text}
+        </p>
       )}
-      <p key={activeIndex} className="lyrics-overlay__line lyrics-overlay__line--current">
+      <p
+        key={`cur-${current?.timeMs ?? activeIndex}`}
+        className="lyrics-overlay__line lyrics-overlay__line--current"
+      >
         {current?.text || '\u00A0'}
       </p>
       {next?.text && (
-        <p className="lyrics-overlay__line lyrics-overlay__line--next">{next.text}</p>
+        <p key={`next-${next.timeMs}`} className="lyrics-overlay__line lyrics-overlay__line--next">
+          {next.text}
+        </p>
       )}
     </div>
   );

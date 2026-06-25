@@ -3,36 +3,34 @@ import './NowPlayingBar.css';
 
 function useFullscreen() {
   const [isFs, setIsFs] = useState(!!document.fullscreenElement);
-
   useEffect(() => {
     const handler = () => setIsFs(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
-
   const toggle = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      document.documentElement.requestFullscreen();
-    }
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
   }, []);
-
   return { isFs, toggle };
 }
 
-export function NowPlayingBar({ track, isPlaying, chromeColor }) {
+export function NowPlayingBar({ track, isPlaying, onTogglePlay, chromeColor }) {
   const { isFs, toggle: toggleFs } = useFullscreen();
-
   if (!track) return null;
-
   return (
     <div className="now-playing-bar">
       <div className="now-playing-bar__info">
         {track.albumArt && (
           <img className="now-playing-bar__art" src={track.albumArt} alt="" />
         )}
-        <span className="now-playing-bar__status">{isPlaying ? '▶' : '❙❙'}</span>
+        <button
+          className="now-playing-bar__playpause"
+          onClick={onTogglePlay}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+        >
+          {isPlaying ? '❚❚' : '▶'}
+        </button>
         <span className="now-playing-bar__track">{track.name}</span>
         <span className="now-playing-bar__sep" style={{ color: chromeColor }}>
           —

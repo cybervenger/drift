@@ -72,3 +72,37 @@
   font-family: var(--font-mono);
   font-size: 0.75rem;
 }
+
+/* ── Gradient Backdrop ───────────────────────────────────────────── */
+@keyframes blob-drift {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  33%       { transform: translate(calc(-50% + 3%), calc(-50% - 4%)) scale(1.05); }
+  66%       { transform: translate(calc(-50% - 3%), calc(-50% + 3%)) scale(0.96); }
+}
+
+.gradient-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: #080810;
+  overflow: hidden;
+}
+
+.gradient-backdrop__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  animation: blob-drift linear infinite;
+  will-change: transform;
+  /* translate(-50%,-50%) so left/top refer to blob center */
+  transform: translate(-50%, -50%);
+}
+
+.gradient-backdrop__vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, transparent 25%, rgba(0,0,0,0.6) 100%),
+    linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 35%, rgba(0,0,0,0.55) 100%);
+  pointer-events: none;
+}

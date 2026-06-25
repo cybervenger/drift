@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import './App.css';
 import { isLoggedIn } from './auth/config';
 import { useMouseIdle } from './components/useMouseIdle';
@@ -45,6 +45,10 @@ function MainApp() {
     seek,
   } = player;
 
+  const handleTogglePlay = useCallback(() => {
+    togglePlay();
+  }, [togglePlay]);
+
   useEffect(() => {
     if (isReady && deviceId && audioUnlocked && !hasTransferred) {
       transferPlaybackHere(getValidToken, deviceId)
@@ -66,7 +70,7 @@ function MainApp() {
       albumName: currentTrack.albumName,
       durationSec: durationMs / 1000,
     })
-      .then((result) => { if (!cancelled) setLyricsState(result); })
+      .then((r) => { if (!cancelled) setLyricsState(r); })
       .catch(() => { if (!cancelled) setLyricsState({ synced: null, plain: null }); });
 
     extractDominantColors(currentTrack.albumArt).then((colors) => {
@@ -97,7 +101,7 @@ function MainApp() {
       <div className="state-message state-message--error">
         {error.message}
         {error.message.includes('Premium') && (
-          <p className="state-message__hint">Drift's playback requires Spotify Premium.</p>
+          <p className="state-message__hint">Drift requires Spotify Premium.</p>
         )}
       </div>
     );
@@ -131,7 +135,12 @@ function MainApp() {
   return (
     <div className={`drift-stage ${isControlsActive ? '' : 'drift-stage--idle'}`}>
       <GradientBackdrop colors={palette} albumArtUrl={currentTrack.albumArt} />
-      <NowPlayingBar track={currentTrack} isPlaying={isPlaying} chromeColor={chromeColor} />
+      <NowPlayingBar
+        track={currentTrack}
+        isPlaying={isPlaying}
+        onTogglePlay={handleTogglePlay}
+        chromeColor={chromeColor}
+      />
 
       {showTitleMoment ? (
         <TitleMoment track={currentTrack} chromeColor={chromeColor} />

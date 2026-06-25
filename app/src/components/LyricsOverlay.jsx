@@ -32,7 +32,7 @@ export function LyricsOverlay({ syncedLines, activeIndex, plainFallback }) {
         </p>
       )}
       <p
-        key={`current-${current?.timeMs ?? 'empty'}`}
+        key={`cur-${current?.timeMs ?? activeIndex}`}
         className="lyrics-overlay__line lyrics-overlay__line--current"
       >
         {current?.text || '\u00A0'}

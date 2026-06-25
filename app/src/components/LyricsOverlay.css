@@ -1,65 +1,82 @@
-@keyframes lyric-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
 .lyrics-overlay {
-  position: fixed;
-  inset: 0;
-  bottom: 64px;
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 12%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 28px;
-  padding: 0 10vw;
-  pointer-events: none;
-  z-index: 10;
+  gap: 0.5rem;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
 }
 
 .lyrics-overlay__line {
-  text-align: center;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.28);
-  max-width: 800px;
-  transition: color 0.4s ease;
+  font-family: var(--font-display);
+  color: var(--drift-warm-white);
+  line-height: 1.25;
+}
+
+.lyrics-overlay__line--current {
+  font-size: clamp(2rem, 4.2vw, 3.6rem);
+  font-weight: 450;
+  font-optical-sizing: auto;
+  animation: lyric-rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .lyrics-overlay__line--prev,
 .lyrics-overlay__line--next {
-  font-size: clamp(0.85rem, 1.8vw, 1.1rem);
-  font-weight: 400;
-  letter-spacing: 0.01em;
+  font-size: clamp(1.1rem, 1.8vw, 1.6rem);
+  font-weight: 300;
+  opacity: 0.38;
+  animation: lyric-settle 0.6s ease both;
 }
 
-.lyrics-overlay__line--current {
-  font-size: clamp(1.5rem, 4vw, 2.6rem);
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.96);
-  letter-spacing: -0.01em;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);;
-  animation: lyric-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+@keyframes lyric-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes lyric-settle {
+  from {
+    opacity: 0;
+    transform: translateY(0.2em);
+  }
+  to {
+    opacity: 0.38;
+    transform: translateY(0);
+  }
 }
 
 .lyrics-overlay--none,
 .lyrics-overlay--plain {
-  position: fixed;
-  inset: 0;
-  bottom: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 10;
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 12%;
 }
 
 .lyrics-overlay__none-text,
 .lyrics-overlay__plain-text {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.25);
-  text-align: center;
-  max-width: 420px;
-  line-height: 1.8;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  font-weight: 300;
+  color: var(--drift-warm-white);
+  opacity: 0.85;
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .lyrics-overlay {
+    left: 5%;
+    right: 5%;
+    bottom: 16%;
+  }
 }

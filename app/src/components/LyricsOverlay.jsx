@@ -1,18 +1,15 @@
 import './LyricsOverlay.css';
 
-/**
- * Shows the active lyric line large and bright, with the line before/after
- * faded — classic lyric-video rhythm, but restrained: no karaoke-style
- * word-by-word highlighting, just a calm line-by-line breathe.
- */
 export function LyricsOverlay({ syncedLines, activeIndex, plainFallback }) {
   if (!syncedLines && !plainFallback) {
-    return null;
+    return (
+      <div className="lyrics-overlay lyrics-overlay--none">
+        <p className="lyrics-overlay__none-text">No lyrics found for this track.</p>
+      </div>
+    );
   }
 
   if (!syncedLines) {
-    // No timing data — show plain lyrics in a quieter, static treatment
-    // rather than pretending we can sync something we don't have.
     return (
       <div className="lyrics-overlay lyrics-overlay--plain">
         <p className="lyrics-overlay__plain-text">{plainFallback}</p>

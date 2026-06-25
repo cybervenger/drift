@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..500;1,9..144,300..450&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
   /* Chrome stays near-invisible so the scene supplies all the color. */
@@ -7,7 +7,7 @@
   --drift-muted: #8b8578;
   --drift-muted-dim: #5a564d;
 
-  --font-display: 'Fraunces', Georgia, serif;
+  --font-display: 'Manrope', -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   color-scheme: dark;

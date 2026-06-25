@@ -43,7 +43,9 @@ export function useSpotifyPlayer(getValidToken) {
   const [isReady, setIsReady] = useState(false);
   const [playerState, setPlayerState] = useState(null);
   const [error, setError] = useState(null);
+  const [tickedProgressMs, setTickedProgressMs] = useState(0);
   const playerRef = useRef(null);
+  const lastStateUpdateRef = useRef({ position: 0, timestamp: Date.now() });
 
   useEffect(() => {
     let cancelled = false;
@@ -93,6 +95,10 @@ export function useSpotifyPlayer(getValidToken) {
 
         player.addListener('player_state_changed', (state) => {
           setPlayerState(state);
+          if (state) {
+            lastStateUpdateRef.current = { position: state.position, timestamp: Date.now() };
+            setTickedProgressMs(state.position);
+          }
         });
 
         await player.connect();
@@ -113,6 +119,24 @@ export function useSpotifyPlayer(getValidToken) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // SDK state updates only fire on actual changes (play/pause/seek/track
+  // change), not every second — this ticks the displayed progress smoothly
+  // in between, purely for the timeline UI. Paused at the last known
+  // position when not playing.
+  useEffect(() => {
+    if (!playerState || playerState.paused) return;
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastStateUpdateRef.current.timestamp;
+      setTickedProgressMs(Math.min(
+        lastStateUpdateRef.current.position + elapsed,
+        playerState.duration
+      ));
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [playerState]);
+
   const track = playerState?.track_window?.current_track ?? null;
 
   return {
@@ -120,7 +144,7 @@ export function useSpotifyPlayer(getValidToken) {
     isReady,
     error,
     isPlaying: playerState ? !playerState.paused : false,
-    progressMs: playerState?.position ?? 0,
+    progressMs: tickedProgressMs,
     durationMs: playerState?.duration ?? 0,
     currentTrack: track
       ? {
@@ -132,6 +156,16 @@ export function useSpotifyPlayer(getValidToken) {
         }
       : null,
     player: playerRef.current,
+    togglePlay: () => playerRef.current?.togglePlay(),
+    nextTrack: () => playerRef.current?.nextTrack(),
+    previousTrack: () => playerRef.current?.previousTrack(),
+    seek: (positionMs) => {
+      // Update the local ticker immediately so the UI feels responsive
+      // rather than waiting on the round-trip SDK state update.
+      lastStateUpdateRef.current = { position: positionMs, timestamp: Date.now() };
+      setTickedProgressMs(positionMs);
+      playerRef.current?.seek(positionMs);
+    },
   };
 }
 

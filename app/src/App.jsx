@@ -13,6 +13,7 @@ import { CallbackScreen } from './components/CallbackScreen';
 import { SceneBackground } from './components/SceneBackground';
 import { LyricsOverlay } from './components/LyricsOverlay';
 import { NowPlayingBar } from './components/NowPlayingBar';
+import { PlaybackControls } from './components/PlaybackControls';
 
 function MainApp() {
   const getValidToken = useSpotifyToken();
@@ -22,20 +23,37 @@ function MainApp() {
   const [lyricsState, setLyricsState] = useState({ synced: null, plain: null });
   const [preset, setPreset] = useState(null);
   const [hasTransferred, setHasTransferred] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
 
-  const { currentTrack, isReady, deviceId, isPlaying, progressMs, durationMs, error } = player;
+  const {
+    currentTrack,
+    isReady,
+    deviceId,
+    isPlaying,
+    progressMs,
+    durationMs,
+    error,
+    togglePlay,
+    nextTrack,
+    previousTrack,
+    seek,
+  } = player;
 
-  // Once the SDK device is ready, move playback here so the app actually
-  // becomes the active Spotify Connect target.
+  // Browsers block audio playback until there's been a direct click inside
+  // this tab. The SDK can connect and report "ready" fine, but the actual
+  // play() call gets silently blocked until that gesture happens — this is
+  // what causes "stuck on pause" when controlling playback remotely (e.g.
+  // from the Spotify phone app) before ever clicking inside the Drift tab.
+  // Transferring playback only after this click avoids that trap.
   useEffect(() => {
-    if (isReady && deviceId && !hasTransferred) {
+    if (isReady && deviceId && audioUnlocked && !hasTransferred) {
       transferPlaybackHere(getValidToken, deviceId)
         .then(() => setHasTransferred(true))
         .catch(() => {
           /* user can still press play from another device manually */
         });
     }
-  }, [isReady, deviceId, hasTransferred, getValidToken]);
+  }, [isReady, deviceId, audioUnlocked, hasTransferred, getValidToken]);
 
   // Re-resolve lyrics + mood preset whenever the track actually changes.
   useEffect(() => {
@@ -92,6 +110,24 @@ function MainApp() {
     );
   }
 
+  if (isReady && !audioUnlocked) {
+    return (
+      <div className="state-message state-message--unlock">
+        <p>Connected to Spotify.</p>
+        <button
+          className="state-message__unlock-button"
+          onClick={() => setAudioUnlocked(true)}
+        >
+          Start listening
+        </button>
+        <p className="state-message__hint">
+          One click to let this tab play audio — after this, you can control
+          playback from your phone or anywhere else as usual.
+        </p>
+      </div>
+    );
+  }
+
   if (!currentTrack) {
     return (
       <div className="state-message">
@@ -118,6 +154,15 @@ function MainApp() {
           plainFallback={lyricsState.plain}
         />
       )}
+      <PlaybackControls
+        isPlaying={isPlaying}
+        progressMs={progressMs}
+        durationMs={durationMs}
+        onTogglePlay={togglePlay}
+        onNext={nextTrack}
+        onPrevious={previousTrack}
+        onSeek={seek}
+      />
     </div>
   );
 }

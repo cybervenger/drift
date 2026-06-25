@@ -17,8 +17,7 @@
 
 .lyrics-overlay__line--current {
   font-size: clamp(2rem, 4.2vw, 3.6rem);
-  font-weight: 450;
-  font-optical-sizing: auto;
+  font-weight: 600;
   animation: lyric-rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 

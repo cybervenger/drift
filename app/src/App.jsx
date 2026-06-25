@@ -16,7 +16,7 @@ import { NowPlayingBar } from './components/NowPlayingBar';
 
 function MainApp() {
   const getValidToken = useSpotifyToken();
-  const player = useSpotifyPlayer(getValidToken);
+  const playerHook = useSpotifyPlayer(getValidToken);
 
   const [viewMode, setViewMode] = useState('lyrics');
   const [lyricsState, setLyricsState] = useState({ synced: null, plain: null });
@@ -24,7 +24,7 @@ function MainApp() {
   const [hasTransferred, setHasTransferred] = useState(false);
 
   const { currentTrack, isReady, deviceId, isPlaying, progressMs, durationMs, error,
-          player: sdkPlayer } = player;
+          player: sdkPlayer } = playerHook;
 
   useEffect(() => {
     if (isReady && deviceId && !hasTransferred) {
@@ -36,30 +36,19 @@ function MainApp() {
 
   useEffect(() => {
     if (!currentTrack) return;
-
     logPlayEvent('track_started', currentTrack);
-
     let cancelled = false;
-
     fetchLyrics({
       trackName: currentTrack.name,
       artistName: currentTrack.artists[0],
       albumName: currentTrack.albumName,
       durationSec: durationMs / 1000,
     })
-      .then((result) => {
-        if (!cancelled) setLyricsState(result);
-      })
-      .catch(() => {
-        if (!cancelled) setLyricsState({ synced: null, plain: null });
-      });
-
+      .then((result) => { if (!cancelled) setLyricsState(result); })
+      .catch(() => { if (!cancelled) setLyricsState({ synced: null, plain: null }); });
     extractDominantColors(currentTrack.albumArt)
       .then((colors) => resolveTrackPreset(currentTrack, colors))
-      .then((resolved) => {
-        if (!cancelled) setPreset(resolved);
-      });
-
+      .then((resolved) => { if (!cancelled) setPreset(resolved); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);
@@ -82,7 +71,7 @@ function MainApp() {
       <div className="state-message state-message--error">
         {error.message}
         {error.message.includes('Premium') && (
-          <p className="state-message__hint">Drift\'s playback requires Spotify Premium.</p>
+          <p className="state-message__hint">Drift's playback requires Spotify Premium.</p>
         )}
       </div>
     );

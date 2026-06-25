@@ -1,49 +1,51 @@
 @keyframes lyric-in {
-  from { opacity: 0; transform: translateY(6px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0)   scale(1); }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .lyrics-overlay {
   position: fixed;
   inset: 0;
-  bottom: 60px;
+  bottom: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  padding: 0 24px;
+  gap: 28px;
+  padding: 0 10vw;
   pointer-events: none;
   z-index: 10;
 }
 
 .lyrics-overlay__line {
   text-align: center;
-  font-size: 1.25rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.45);
-  transition: color 0.3s ease, transform 0.3s ease;
-  max-width: 700px;
-}
-
-.lyrics-overlay__line--current {
-  font-size: 1.6rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
-  animation: lyric-in 0.25s ease both;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.28);
+  max-width: 800px;
+  transition: color 0.4s ease;
 }
 
 .lyrics-overlay__line--prev,
 .lyrics-overlay__line--next {
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.35);
+  font-size: clamp(0.85rem, 1.8vw, 1.1rem);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.lyrics-overlay__line--current {
+  font-size: clamp(1.5rem, 4vw, 2.6rem);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.96);
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 60px rgba(255, 255, 255, 0.15);
+  animation: lyric-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .lyrics-overlay--none,
 .lyrics-overlay--plain {
   position: fixed;
   inset: 0;
-  bottom: 60px;
+  bottom: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -53,9 +55,11 @@
 
 .lyrics-overlay__none-text,
 .lyrics-overlay__plain-text {
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.25);
   text-align: center;
-  max-width: 500px;
-  line-height: 1.7;
+  max-width: 420px;
+  line-height: 1.8;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }

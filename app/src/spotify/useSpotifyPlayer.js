@@ -23,9 +23,7 @@ export function useSpotifyPlayer(getValidToken) {
   const [error, setError] = useState(null);
   const playerRef = useRef(null);
 
-  // Throttle refs: track/pause changes fire immediately;
-  // position-only updates are capped at 500 ms to avoid re-rendering
-  // the whole tree dozens of times per second.
+  // Throttle refs — avoid 10+ re-renders/sec from player_state_changed
   const lastTrackIdRef = useRef(null);
   const lastPausedRef = useRef(null);
   const lastPositionUpdateRef = useRef(0);
@@ -41,12 +39,8 @@ export function useSpotifyPlayer(getValidToken) {
         const player = new Spotify.Player({
           name: 'Drift',
           getOAuthToken: async (callback) => {
-            try {
-              const token = await getValidToken();
-              callback(token);
-            } catch (err) {
-              setError(err);
-            }
+            try { callback(await getValidToken()); }
+            catch (err) { setError(err); }
           },
           volume: 0.8,
         });
@@ -55,9 +49,7 @@ export function useSpotifyPlayer(getValidToken) {
           setDeviceId(device_id);
           setIsReady(true);
         });
-
         player.addListener('not_ready', () => setIsReady(false));
-
         player.addListener('initialization_error', ({ message }) =>
           setError(new Error(`SDK init error: ${message}`))
         );
@@ -84,8 +76,7 @@ export function useSpotifyPlayer(getValidToken) {
           }
         });
 
-        // Set ref BEFORE connect so it's available when 'ready' fires
-        // and triggers re-renders — otherwise sdkPlayer is null on first render.
+        // IMPORTANT: set ref BEFORE connect so it's non-null when 'ready' fires
         playerRef.current = player;
         await player.connect();
       } catch (err) {
@@ -94,7 +85,6 @@ export function useSpotifyPlayer(getValidToken) {
     }
 
     init();
-
     return () => {
       cancelled = true;
       playerRef.current?.disconnect();
@@ -111,16 +101,30 @@ export function useSpotifyPlayer(getValidToken) {
     isPlaying: playerState ? !playerState.paused : false,
     progressMs: playerState?.position ?? 0,
     durationMs: playerState?.duration ?? 0,
-    currentTrack: track
-      ? {
-          id: track.id,
-          name: track.name,
-          artists: track.artists.map((a) => a.name),
-          albumName: track.album.name,
-          albumArt: track.album.images?.[0]?.url ?? null,
-        }
-      : null,
+    currentTrack: track ? {
+      id: track.id,
+      name: track.name,
+      artists: track.artists.map((a) => a.name),
+      albumName: track.album.name,
+      albumArt: track.album.images?.[0]?.url ?? null,
+    } : null,
     player: playerRef.current,
+    togglePlay: () => playerRef.current?.togglePlay(),
+    nextTrack: async () => {
+      const token = await getValidToken();
+      await fetch('https://api.spotify.com/v1/me/player/next', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+    previousTrack: async () => {
+      const token = await getValidToken();
+      await fetch('https://api.spotify.com/v1/me/player/previous', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+    seek: (positionMs) => playerRef.current?.seek(positionMs),
   };
 }
 

@@ -2,42 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 
 const SDK_SRC = 'https://sdk.scdn.co/spotify-player.js';
 
-/**
- * Loads the Spotify Web Playback SDK script once, and resolves when
- * window.onSpotifyWebPlaybackSDKReady has fired. Safe to call multiple
- * times — it dedupes via a module-level promise.
- */
 let sdkReadyPromise = null;
 function loadSpotifySdk() {
   if (sdkReadyPromise) return sdkReadyPromise;
-
   sdkReadyPromise = new Promise((resolve) => {
-    if (window.Spotify) {
-      resolve(window.Spotify);
-      return;
-    }
-
-    window.onSpotifyWebPlaybackSDKReady = () => {
-      resolve(window.Spotify);
-    };
-
+    if (window.Spotify) { resolve(window.Spotify); return; }
+    window.onSpotifyWebPlaybackSDKReady = () => resolve(window.Spotify);
     const script = document.createElement('script');
     script.src = SDK_SRC;
     script.async = true;
     document.body.appendChild(script);
   });
-
   return sdkReadyPromise;
 }
 
-/**
- * Initializes a Spotify Connect device ("Drift") in this browser tab and
- * tracks live playback state. getValidToken should be the function from
- * useSpotifyToken — the SDK calls it whenever it needs a fresh token.
- *
- * Returns:
- *   { deviceId, isReady, currentTrack, isPlaying, progressMs, durationMs, error }
- */
 export function useSpotifyPlayer(getValidToken) {
   const [deviceId, setDeviceId] = useState(null);
   const [isReady, setIsReady] = useState(false);
@@ -48,6 +26,13 @@ export function useSpotifyPlayer(getValidToken) {
   const lastStateUpdateRef = useRef({ position: 0, timestamp: Date.now() });
   const getValidTokenRef = useRef(getValidToken);
   getValidTokenRef.current = getValidToken;
+
+  // Throttle refs: track/pause changes fire immediately;
+  // position-only updates are capped at 500 ms to avoid re-rendering
+  // the whole tree dozens of times per second.
+  const lastTrackIdRef = useRef(null);
+  const lastPausedRef = useRef(null);
+  const lastPositionUpdateRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,36 +60,40 @@ export function useSpotifyPlayer(getValidToken) {
           setIsReady(true);
         });
 
-        player.addListener('not_ready', () => {
-          setIsReady(false);
-        });
+        player.addListener('not_ready', () => setIsReady(false));
 
-        player.addListener('initialization_error', ({ message }) => {
-          setError(new Error(`SDK init error: ${message}`));
-        });
-
-        player.addListener('authentication_error', ({ message }) => {
-          setError(new Error(`SDK auth error: ${message}`));
-        });
-
-        player.addListener('account_error', ({ message }) => {
-          setError(
-            new Error(
-              `SDK account error (Premium required for playback): ${message}`
-            )
-          );
-        });
+        player.addListener('initialization_error', ({ message }) =>
+          setError(new Error(`SDK init error: ${message}`))
+        );
+        player.addListener('authentication_error', ({ message }) =>
+          setError(new Error(`SDK auth error: ${message}`))
+        );
+        player.addListener('account_error', ({ message }) =>
+          setError(new Error(`SDK account error (Premium required): ${message}`))
+        );
 
         player.addListener('player_state_changed', (state) => {
-          setPlayerState(state);
-          if (state) {
+          if (!state) return;
+          const newTrackId = state.track_window?.current_track?.id;
+          const newPaused = state.paused;
+          const trackChanged = newTrackId !== lastTrackIdRef.current;
+          const pauseChanged = newPaused !== lastPausedRef.current;
+          const now = Date.now();
+          const positionDue = now - lastPositionUpdateRef.current >= 500;
+          if (trackChanged || pauseChanged || positionDue) {
+            lastTrackIdRef.current = newTrackId;
+            lastPausedRef.current = newPaused;
+            lastPositionUpdateRef.current = now;
+            setPlayerState(state);
             lastStateUpdateRef.current = { position: state.position, timestamp: Date.now() };
             setTickedProgressMs(state.position);
           }
         });
 
-        await player.connect();
+        // Set ref BEFORE connect so it's available when 'ready' fires
+        // and triggers re-renders — otherwise sdkPlayer is null on first render.
         playerRef.current = player;
+        await player.connect();
       } catch (err) {
         setError(err);
       }
@@ -114,17 +103,14 @@ export function useSpotifyPlayer(getValidToken) {
 
     return () => {
       cancelled = true;
-      if (playerRef.current) {
-        playerRef.current.disconnect();
-      }
+      playerRef.current?.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // SDK state updates only fire on actual changes (play/pause/seek/track
-  // change), not every second — this ticks the displayed progress smoothly
-  // in between, purely for the timeline UI. Paused at the last known
-  // position when not playing.
+  // SDK state updates are throttled to ~500ms — this ticks the displayed
+  // progress smoothly in between, purely for the timeline UI, so the
+  // scrubber doesn't visibly stutter once per half-second.
   useEffect(() => {
     if (!playerState || playerState.paused) return;
 
@@ -180,8 +166,6 @@ export function useSpotifyPlayer(getValidToken) {
       });
     },
     seek: (positionMs) => {
-      // Update the local ticker immediately so the UI feels responsive
-      // rather than waiting on the round-trip SDK state update.
       lastStateUpdateRef.current = { position: positionMs, timestamp: Date.now() };
       setTickedProgressMs(positionMs);
       playerRef.current?.seek(positionMs);
@@ -189,11 +173,6 @@ export function useSpotifyPlayer(getValidToken) {
   };
 }
 
-/**
- * Transfers playback to this browser tab's device so it becomes the active
- * Spotify Connect target. Call after isReady is true (e.g. on a "Play here"
- * button) — Spotify doesn't auto-transfer playback to a new device.
- */
 export async function transferPlaybackHere(getValidToken, deviceId) {
   const token = await getValidToken();
   await fetch('https://api.spotify.com/v1/me/player', {

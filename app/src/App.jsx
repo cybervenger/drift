@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import './App.css';
 import { isLoggedIn } from './auth/config';
 import { useMouseIdle } from './components/useMouseIdle';
@@ -16,11 +16,7 @@ import { LyricsOverlay } from './components/LyricsOverlay';
 import { NowPlayingBar } from './components/NowPlayingBar';
 import { PlaybackControls } from './components/PlaybackControls';
 
-// How long the big title moment stays up before handing off to lyrics.
 const TITLE_MOMENT_DURATION_MS = 2200;
-
-// A muted, warm-grey fallback used until a track's own palette is ready,
-// so chrome text doesn't flash an unstyled color on first load.
 const DEFAULT_CHROME_COLOR = '#8b8578';
 
 function MainApp() {
@@ -49,24 +45,14 @@ function MainApp() {
     seek,
   } = player;
 
-  // Browsers block audio playback until there's been a direct click inside
-  // this tab. The SDK can connect and report "ready" fine, but the actual
-  // play() call gets silently blocked until that gesture happens — this is
-  // what causes "stuck on pause" when controlling playback remotely (e.g.
-  // from the Spotify phone app) before ever clicking inside the Drift tab.
-  // Transferring playback only after this click avoids that trap.
   useEffect(() => {
     if (isReady && deviceId && audioUnlocked && !hasTransferred) {
       transferPlaybackHere(getValidToken, deviceId)
         .then(() => setHasTransferred(true))
-        .catch(() => {
-          /* user can still press play from another device manually */
-        });
+        .catch(() => {});
     }
   }, [isReady, deviceId, audioUnlocked, hasTransferred, getValidToken]);
 
-  // Re-resolve lyrics + color palette whenever the track actually changes,
-  // and run the brief title-moment entrance before settling into lyrics.
   useEffect(() => {
     if (!currentTrack) return;
 
@@ -80,12 +66,8 @@ function MainApp() {
       albumName: currentTrack.albumName,
       durationSec: durationMs / 1000,
     })
-      .then((result) => {
-        if (!cancelled) setLyricsState(result);
-      })
-      .catch(() => {
-        if (!cancelled) setLyricsState({ synced: null, plain: null });
-      });
+      .then((result) => { if (!cancelled) setLyricsState(result); })
+      .catch(() => { if (!cancelled) setLyricsState({ synced: null, plain: null }); });
 
     extractDominantColors(currentTrack.albumArt).then((colors) => {
       if (!cancelled) setPalette(colors);
@@ -97,9 +79,7 @@ function MainApp() {
       setShowTitleMoment(false);
     }, TITLE_MOMENT_DURATION_MS);
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);
 
@@ -110,9 +90,6 @@ function MainApp() {
     [lyricsState.synced, progressMs]
   );
 
-  // A muted version of the palette's leading color, used to tint chrome
-  // (now-playing bar, artist label) so it feels tied to the current song
-  // rather than fixed regardless of what's playing.
   const chromeColor = palette[0] ? lightenForChrome(palette[0]) : DEFAULT_CHROME_COLOR;
 
   if (error) {
@@ -179,9 +156,6 @@ function MainApp() {
   );
 }
 
-// Blends a dark album-art color toward Drift's warm-white so it stays
-// legible as small chrome text, while still reading as "tinted toward
-// this song" rather than a fixed neutral grey.
 function lightenForChrome(hex) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -192,7 +166,10 @@ function lightenForChrome(hex) {
 
 function App() {
   const [route, setRoute] = useState(() =>
-    window.location.pathname === '/callback' ? 'callback' : 'home'
+    new URLSearchParams(window.location.search).has('code') ||
+    new URLSearchParams(window.location.search).has('error')
+      ? 'callback'
+      : 'home'
   );
   const [loggedIn, setLoggedIn] = useState(isLoggedIn);
 

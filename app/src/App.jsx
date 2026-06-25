@@ -23,7 +23,8 @@ function MainApp() {
   const [preset, setPreset] = useState(null);
   const [hasTransferred, setHasTransferred] = useState(false);
 
-  const { currentTrack, isReady, deviceId, isPlaying, progressMs, durationMs, error } = player;
+  const { currentTrack, isReady, deviceId, isPlaying, progressMs, durationMs, error,
+          player: sdkPlayer } = player;
 
   useEffect(() => {
     if (isReady && deviceId && !hasTransferred) {
@@ -72,6 +73,10 @@ function MainApp() {
     setViewMode((m) => (m === 'lyrics' ? 'visual' : 'lyrics'));
   }, []);
 
+  const handleTogglePlay = useCallback(() => {
+    sdkPlayer?.togglePlay();
+  }, [sdkPlayer]);
+
   if (error) {
     return (
       <div className="state-message state-message--error">
@@ -99,6 +104,7 @@ function MainApp() {
       <NowPlayingBar
         track={currentTrack}
         isPlaying={isPlaying}
+        onTogglePlay={handleTogglePlay}
         onToggleView={handleToggleView}
         viewMode={viewMode}
       />

@@ -4,6 +4,11 @@ import './LyricsOverlay.css';
  * Shows the active lyric line large and bright, with the line before/after
  * faded — classic lyric-video rhythm, but restrained: no karaoke-style
  * word-by-word highlighting, just a calm line-by-line breathe.
+ *
+ * Each line is keyed by its timeMs (a stable, unique identity per line in
+ * the song) so React actually mounts a fresh element when the active line
+ * changes, rather than reusing the same node and silently skipping the
+ * enter transition.
  */
 export function LyricsOverlay({ syncedLines, activeIndex, plainFallback }) {
   if (!syncedLines && !plainFallback) {
@@ -11,8 +16,6 @@ export function LyricsOverlay({ syncedLines, activeIndex, plainFallback }) {
   }
 
   if (!syncedLines) {
-    // No timing data — show plain lyrics in a quieter, static treatment
-    // rather than pretending we can sync something we don't have.
     return (
       <div className="lyrics-overlay lyrics-overlay--plain">
         <p className="lyrics-overlay__plain-text">{plainFallback}</p>
@@ -29,11 +32,22 @@ export function LyricsOverlay({ syncedLines, activeIndex, plainFallback }) {
 
   return (
     <div className="lyrics-overlay">
-      {prev?.text && <p className="lyrics-overlay__line lyrics-overlay__line--prev">{prev.text}</p>}
-      <p className="lyrics-overlay__line lyrics-overlay__line--current">
+      {prev?.text && (
+        <p key={`prev-${prev.timeMs}`} className="lyrics-overlay__line lyrics-overlay__line--prev">
+          {prev.text}
+        </p>
+      )}
+      <p
+        key={`current-${current?.timeMs ?? 'empty'}`}
+        className="lyrics-overlay__line lyrics-overlay__line--current"
+      >
         {current?.text || '\u00A0'}
       </p>
-      {next?.text && <p className="lyrics-overlay__line lyrics-overlay__line--next">{next.text}</p>}
+      {next?.text && (
+        <p key={`next-${next.timeMs}`} className="lyrics-overlay__line lyrics-overlay__line--next">
+          {next.text}
+        </p>
+      )}
     </div>
   );
 }

@@ -13,14 +13,13 @@
   font-family: var(--font-display);
   color: var(--drift-warm-white);
   line-height: 1.25;
-  transition: opacity 0.6s ease, transform 0.6s ease;
 }
 
 .lyrics-overlay__line--current {
   font-size: clamp(2rem, 4.2vw, 3.6rem);
   font-weight: 450;
   font-optical-sizing: auto;
-  opacity: 1;
+  animation: lyric-rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .lyrics-overlay__line--prev,
@@ -28,10 +27,31 @@
   font-size: clamp(1.1rem, 1.8vw, 1.6rem);
   font-weight: 300;
   opacity: 0.38;
+  animation: lyric-settle 0.6s ease both;
 }
 
-.lyrics-overlay__line--prev {
-  transform: translateY(0);
+@keyframes lyric-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes lyric-settle {
+  from {
+    opacity: 0;
+    transform: translateY(0.2em);
+  }
+  to {
+    opacity: 0.38;
+    transform: translateY(0);
+  }
 }
 
 .lyrics-overlay--plain {

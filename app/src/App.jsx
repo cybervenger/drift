@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import './App.css';
 import { isLoggedIn } from './auth/config';
+import { useMouseIdle } from './components/useMouseIdle';
 import { useSpotifyToken } from './auth/useSpotifyToken';
 import { useSpotifyPlayer, transferPlaybackHere } from './spotify/useSpotifyPlayer';
 import { fetchLyrics, getActiveLyricIndex } from './lyrics/lrclib';
@@ -24,6 +25,7 @@ function MainApp() {
   const [preset, setPreset] = useState(null);
   const [hasTransferred, setHasTransferred] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const isControlsActive = useMouseIdle(3000);
 
   const {
     currentTrack,
@@ -139,7 +141,7 @@ function MainApp() {
   }
 
   return (
-    <div className="drift-stage">
+    <div className={`drift-stage ${isControlsActive ? '' : 'drift-stage--idle'}`}>
       <SceneBackground scene={preset?.scene} />
       <NowPlayingBar
         track={currentTrack}

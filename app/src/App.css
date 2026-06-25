@@ -5,6 +5,14 @@
   overflow: hidden;
 }
 
+.drift-stage--idle {
+  cursor: none;
+}
+
+.drift-stage--idle .now-playing-bar {
+  opacity: 0;
+}
+
 .state-message {
   height: 100%;
   display: flex;

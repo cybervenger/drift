@@ -25,10 +25,10 @@ export function NowPlayingBar({ track, isPlaying, onTogglePlay }) {
           <img className="now-playing-bar__art" src={track.albumArt} alt="" />
         )}
         <button className="now-playing-bar__playpause" onClick={onTogglePlay}>
-          {isPlaying ? '\u275A\u275A' : '\u25B6'}
+          {isPlaying ? '❚❚' : '▶'}
         </button>
         <span className="now-playing-bar__track">{track.name}</span>
-        <span className="now-playing-bar__sep">\u2014</span>
+        <span className="now-playing-bar__sep">—</span>
         <span className="now-playing-bar__artist">{track.artists.join(', ')}</span>
       </div>
       <button
@@ -36,7 +36,7 @@ export function NowPlayingBar({ track, isPlaying, onTogglePlay }) {
         onClick={toggleFs}
         title={isFs ? 'Exit fullscreen' : 'Fullscreen'}
       >
-        \u26F6
+        ⛶
       </button>
     </div>
   );

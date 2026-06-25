@@ -8,7 +8,7 @@ export function CallbackScreen({ onComplete }) {
     handleAuthCallback()
       .then(() => {
         // Clean the ?code=... params out of the URL, then hand off.
-        window.history.replaceState({}, '', '/');
+        window.history.replaceState({}, '', import.meta.env.BASE_URL || '/');
         onComplete();
       })
       .catch((err) => setError(err.message));

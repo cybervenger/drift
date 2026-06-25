@@ -46,6 +46,8 @@ export function useSpotifyPlayer(getValidToken) {
   const [tickedProgressMs, setTickedProgressMs] = useState(0);
   const playerRef = useRef(null);
   const lastStateUpdateRef = useRef({ position: 0, timestamp: Date.now() });
+  const getValidTokenRef = useRef(getValidToken);
+  getValidTokenRef.current = getValidToken;
 
   useEffect(() => {
     let cancelled = false;
@@ -157,8 +159,26 @@ export function useSpotifyPlayer(getValidToken) {
       : null,
     player: playerRef.current,
     togglePlay: () => playerRef.current?.togglePlay(),
-    nextTrack: () => playerRef.current?.nextTrack(),
-    previousTrack: () => playerRef.current?.previousTrack(),
+    // The SDK's own nextTrack()/previousTrack() can silently no-op when
+    // there's no in-session queue history yet (e.g. right after Drift
+    // becomes the active device) — calling the Web API directly is more
+    // reliable and matches standard Spotify behavior (previous restarts
+    // the current track if you're more than a few seconds in, otherwise
+    // it goes to the actual previous track).
+    nextTrack: async () => {
+      const token = await getValidTokenRef.current();
+      await fetch('https://api.spotify.com/v1/me/player/next', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+    previousTrack: async () => {
+      const token = await getValidTokenRef.current();
+      await fetch('https://api.spotify.com/v1/me/player/previous', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
     seek: (positionMs) => {
       // Update the local ticker immediately so the UI feels responsive
       // rather than waiting on the round-trip SDK state update.

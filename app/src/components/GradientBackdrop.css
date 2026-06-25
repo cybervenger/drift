@@ -1,0 +1,122 @@
+.gradient-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--drift-black);
+}
+
+.gradient-backdrop__zoom-wrapper {
+  position: absolute;
+  inset: 0;
+  animation: gradient-backdrop-breathe 16s ease-in-out infinite;
+}
+
+@keyframes gradient-backdrop-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+
+.gradient-backdrop__mesh {
+  position: absolute;
+  inset: -20%;
+  filter: blur(60px);
+}
+
+.gradient-backdrop__blob {
+  position: absolute;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  animation-name: gradient-backdrop-float;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  transition: background 1.2s ease;
+}
+
+@keyframes gradient-backdrop-float {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(8%, -6%);
+  }
+  66% {
+    transform: translate(-8%, 6%);
+  }
+}
+
+.gradient-backdrop__album {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.3;
+  transition: opacity 1s ease;
+}
+
+.gradient-backdrop__album img {
+  width: 140%;
+  height: 140%;
+  object-fit: cover;
+  filter: blur(40px) saturate(1.3);
+  transform: scale(1.1);
+}
+
+.gradient-backdrop__particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.gradient-backdrop__particle {
+  position: absolute;
+  bottom: -10px;
+  border-radius: 50%;
+  background: rgba(245, 241, 232, 0.5);
+  animation-name: gradient-backdrop-drift-up;
+  animation-timing-function: linear;
+}
+
+@keyframes gradient-backdrop-drift-up {
+  from {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.3;
+  }
+  to {
+    transform: translateY(-100vh) translateX(20px);
+    opacity: 0;
+  }
+}
+
+.gradient-backdrop__vignette {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 10, 11, 0) 0%,
+    rgba(10, 10, 11, 0.15) 55%,
+    rgba(10, 10, 11, 0.8) 100%
+  );
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gradient-backdrop__zoom-wrapper,
+  .gradient-backdrop__blob,
+  .gradient-backdrop__particle {
+    animation: none;
+  }
+}

@@ -26,11 +26,16 @@ export function LyricsOverlay({ syncedLines, activeIndex, plainFallback }) {
 
   return (
     <div className="lyrics-overlay">
-      {prev?.text && <p className="lyrics-overlay__line lyrics-overlay__line--prev">{prev.text}</p>}
-      <p className="lyrics-overlay__line lyrics-overlay__line--current">
+      {prev?.text && (
+        <p className="lyrics-overlay__line lyrics-overlay__line--prev">{prev.text}</p>
+      )}
+      {/* key=activeIndex forces remount on each line change, triggering the CSS animation */}
+      <p key={activeIndex} className="lyrics-overlay__line lyrics-overlay__line--current">
         {current?.text || '\u00A0'}
       </p>
-      {next?.text && <p className="lyrics-overlay__line lyrics-overlay__line--next">{next.text}</p>}
+      {next?.text && (
+        <p className="lyrics-overlay__line lyrics-overlay__line--next">{next.text}</p>
+      )}
     </div>
   );
 }

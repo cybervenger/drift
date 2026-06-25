@@ -37,7 +37,7 @@
   font-weight: 600;
   color: rgba(255, 255, 255, 0.96);
   letter-spacing: -0.01em;
-  text-shadow: 0 0 60px rgba(255, 255, 255, 0.15);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);;
   animation: lyric-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 

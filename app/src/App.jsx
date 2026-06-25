@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { isLoggedIn } from './auth/config';
 import { useSpotifyToken } from './auth/useSpotifyToken';
@@ -7,7 +7,6 @@ import { fetchLyrics, getActiveLyricIndex } from './lyrics/lrclib';
 import { extractDominantColors } from './scenes/extractColors';
 import { resolveTrackPreset } from './mood/moodPreset';
 import { logPlayEvent } from './spotify/playEventLog';
-
 import { LoginScreen } from './components/LoginScreen';
 import { CallbackScreen } from './components/CallbackScreen';
 import { SceneBackground } from './components/SceneBackground';
@@ -17,27 +16,22 @@ import { NowPlayingBar } from './components/NowPlayingBar';
 function MainApp() {
   const getValidToken = useSpotifyToken();
   const playerHook = useSpotifyPlayer(getValidToken);
+  const { currentTrack, isReady, deviceId, isPlaying, progressMs,
+          durationMs, error, player: sdkPlayer } = playerHook;
 
-  const [viewMode, setViewMode] = useState('lyrics');
   const [lyricsState, setLyricsState] = useState({ synced: null, plain: null });
   const [preset, setPreset] = useState(null);
   const [hasTransferred, setHasTransferred] = useState(false);
-
-  // Live interpolated progress — updates every 100ms so lyrics stay
-  // in sync even though the SDK state only fires every 500ms.
   const [liveProgressMs, setLiveProgressMs] = useState(0);
   const syncRef = useRef({ progressMs: 0, timestamp: 0 });
 
-  const { currentTrack, isReady, deviceId, isPlaying, progressMs, durationMs, error,
-          player: sdkPlayer } = playerHook;
-
-  // Keep syncRef up to date whenever the SDK gives us a fresh position.
+  // Sync anchor whenever SDK gives a fresh position
   useEffect(() => {
     syncRef.current = { progressMs, timestamp: Date.now() };
     setLiveProgressMs(progressMs);
   }, [progressMs]);
 
-  // Tick every 100ms while playing to interpolate position between SDK updates.
+  // Interpolate at 100ms so lyrics track smoothly between SDK updates
   useEffect(() => {
     if (!isPlaying) return;
     const id = setInterval(() => {
@@ -65,11 +59,11 @@ function MainApp() {
       albumName: currentTrack.albumName,
       durationSec: durationMs / 1000,
     })
-      .then((result) => { if (!cancelled) setLyricsState(result); })
+      .then(r => { if (!cancelled) setLyricsState(r); })
       .catch(() => { if (!cancelled) setLyricsState({ synced: null, plain: null }); });
     extractDominantColors(currentTrack.albumArt)
-      .then((colors) => resolveTrackPreset(currentTrack, colors))
-      .then((resolved) => { if (!cancelled) setPreset(resolved); });
+      .then(colors => resolveTrackPreset(currentTrack, colors))
+      .then(resolved => { if (!cancelled) setPreset(resolved); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);
@@ -78,10 +72,6 @@ function MainApp() {
     () => getActiveLyricIndex(lyricsState.synced, liveProgressMs),
     [lyricsState.synced, liveProgressMs]
   );
-
-  const handleToggleView = useCallback(() => {
-    setViewMode((m) => (m === 'lyrics' ? 'visual' : 'lyrics'));
-  }, []);
 
   const handleTogglePlay = useCallback(() => {
     sdkPlayer?.togglePlay();
@@ -92,7 +82,7 @@ function MainApp() {
       <div className="state-message state-message--error">
         {error.message}
         {error.message.includes('Premium') && (
-          <p className="state-message__hint">Drift's playback requires Spotify Premium.</p>
+          <p className="state-message__hint">Drift requires Spotify Premium.</p>
         )}
       </div>
     );
@@ -102,8 +92,8 @@ function MainApp() {
     return (
       <div className="state-message">
         {isReady
-          ? 'Connected. Start playing something on Spotify to bring Drift to life.'
-          : 'Connecting to Spotify…'}
+          ? 'Connected. Start playing something on Spotify.'
+          : 'Connecting to Spotify\u2026'}
       </div>
     );
   }
@@ -115,16 +105,12 @@ function MainApp() {
         track={currentTrack}
         isPlaying={isPlaying}
         onTogglePlay={handleTogglePlay}
-        onToggleView={handleToggleView}
-        viewMode={viewMode}
       />
-      {viewMode === 'lyrics' && (
-        <LyricsOverlay
-          syncedLines={lyricsState.synced}
-          activeIndex={activeLyricIndex}
-          plainFallback={lyricsState.plain}
-        />
-      )}
+      <LyricsOverlay
+        syncedLines={lyricsState.synced}
+        activeIndex={activeLyricIndex}
+        plainFallback={lyricsState.plain}
+      />
     </div>
   );
 }
@@ -133,26 +119,16 @@ function App() {
   const [route, setRoute] = useState(() =>
     new URLSearchParams(window.location.search).has('code') ||
     new URLSearchParams(window.location.search).has('error')
-      ? 'callback'
-      : 'home'
+      ? 'callback' : 'home'
   );
   const [loggedIn, setLoggedIn] = useState(isLoggedIn);
 
   if (route === 'callback') {
     return (
-      <CallbackScreen
-        onComplete={() => {
-          setLoggedIn(true);
-          setRoute('home');
-        }}
-      />
+      <CallbackScreen onComplete={() => { setLoggedIn(true); setRoute('home'); }} />
     );
   }
-
-  if (!loggedIn) {
-    return <LoginScreen />;
-  }
-
+  if (!loggedIn) return <LoginScreen />;
   return <MainApp />;
 }
 

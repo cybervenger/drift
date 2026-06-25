@@ -7,6 +7,7 @@
   flex-direction: column;
   gap: 0.5rem;
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.5);
+  z-index: 10;
 }
 
 .lyrics-overlay__line {
@@ -46,6 +47,19 @@
   opacity: 0.85;
   white-space: pre-line;
   line-height: 1.6;
+}
+
+.lyrics-overlay--none {
+  bottom: 50%;
+  transform: translateY(50%);
+  text-align: center;
+}
+
+.lyrics-overlay__none-text {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--drift-warm-white);
+  opacity: 0.35;
 }
 
 @media (max-width: 640px) {

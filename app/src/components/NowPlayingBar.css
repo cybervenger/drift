@@ -53,6 +53,32 @@
   transition: color 0.8s ease;
 }
 
+.now-playing-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.now-playing-bar__fullscreen {
+  background: transparent;
+  border: 1px solid var(--drift-muted-dim);
+  color: var(--drift-muted);
+  font-size: 0.9rem;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: border-color 0.3s ease, color 0.3s ease;
+}
+
+.now-playing-bar__fullscreen:hover {
+  border-color: var(--drift-warm-white);
+  color: var(--drift-warm-white);
+}
+
 @media (max-width: 640px) {
   .now-playing-bar {
     padding: 1.25rem 5%;

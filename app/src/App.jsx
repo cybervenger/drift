@@ -13,7 +13,7 @@ import { NowPlayingBar } from './components/NowPlayingBar';
 
 /** Animated color-blob backdrop from album art palette. No video files needed. */
 function GradientBackdrop({ colors }) {
-  const palette = (colors && colors.length > 0) ? colors : [[20, 20, 50], [10, 15, 40]];
+  const palette = (colors && colors.length > 0) ? colors : [[80, 40, 130], [30, 60, 120], [100, 30, 80]];
   const blobs = [
     { c: palette[0], x: '12%',  y: '45%', s: '75vmax', delay: '0s',   dur: '14s' },
     { c: palette[1] || palette[0], x: '78%',  y: '18%', s: '65vmax', delay: '-5s',  dur: '17s' },
@@ -82,7 +82,8 @@ function MainApp() {
       .then(r => { if (!cancelled) setLyricsState(r); })
       .catch(() => { if (!cancelled) setLyricsState({ synced: null, plain: null }); });
     extractDominantColors(currentTrack.albumArt)
-      .then(colors => { if (!cancelled) setPalette(colors); });
+      .then(colors => { if (!cancelled) setPalette(colors && colors.length > 0 ? colors : [[80,40,130],[30,60,120],[100,30,80]]); })
+      .catch(() => { if (!cancelled) setPalette([[80,40,130],[30,60,120],[100,30,80]]); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);

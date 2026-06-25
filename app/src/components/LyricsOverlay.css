@@ -1,7 +1,7 @@
 .lyrics-overlay {
   position: absolute;
-  left: 6%;
-  right: 6%;
+  left: 8%;
+  right: 8%;
   bottom: 12%;
   display: flex;
   flex-direction: column;
@@ -17,6 +17,7 @@
 
 .lyrics-overlay__line {
   font-family: var(--font-display);
+  font-weight: 300;
   color: var(--drift-warm-white);
   line-height: 1.25;
 }
@@ -24,62 +25,28 @@
 .lyrics-overlay__line--current {
   font-size: clamp(2rem, 4.2vw, 3.6rem);
   font-weight: 450;
-<<<<<<< HEAD
-  font-optical-sizing: auto;
-  animation: lyric-rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-=======
   opacity: 1;
   animation: lyric-in 0.45s ease forwards;
->>>>>>> cd21118bcb0443aaaa47f2f8a982db2959513807
 }
 
 .lyrics-overlay__line--prev,
 .lyrics-overlay__line--next {
   font-size: clamp(1.1rem, 1.8vw, 1.6rem);
   font-weight: 300;
-<<<<<<< HEAD
-  opacity: 0.38;
-  animation: lyric-settle 0.6s ease both;
-}
-
-@keyframes lyric-rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(0.4em);
-    filter: blur(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-}
-
-@keyframes lyric-settle {
-  from {
-    opacity: 0;
-    transform: translateY(0.2em);
-  }
-  to {
-    opacity: 0.38;
-    transform: translateY(0);
-  }
-=======
   opacity: 0.35;
->>>>>>> cd21118bcb0443aaaa47f2f8a982db2959513807
 }
 
 .lyrics-overlay--plain {
-  max-width: 60ch;
+  bottom: 15%;
+  max-height: 60vh;
+  overflow: hidden;
 }
 
 .lyrics-overlay__plain-text {
-  font-family: var(--font-display);
-  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  font-size: clamp(1rem, 1.6vw, 1.4rem);
   font-weight: 300;
   color: var(--drift-warm-white);
-  opacity: 0.85;
-  white-space: pre-line;
+  opacity: 0.7;
   line-height: 1.6;
 }
 
@@ -100,6 +67,5 @@
   .lyrics-overlay {
     left: 5%;
     right: 5%;
-    bottom: 16%;
   }
 }

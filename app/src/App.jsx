@@ -5,13 +5,35 @@ import { useSpotifyToken } from './auth/useSpotifyToken';
 import { useSpotifyPlayer, transferPlaybackHere } from './spotify/useSpotifyPlayer';
 import { fetchLyrics, getActiveLyricIndex } from './lyrics/lrclib';
 import { extractDominantColors } from './scenes/extractColors';
-import { resolveTrackPreset } from './mood/moodPreset';
 import { logPlayEvent } from './spotify/playEventLog';
 import { LoginScreen } from './components/LoginScreen';
 import { CallbackScreen } from './components/CallbackScreen';
-import { SceneBackground } from './components/SceneBackground';
 import { LyricsOverlay } from './components/LyricsOverlay';
 import { NowPlayingBar } from './components/NowPlayingBar';
+
+/** Animated color-blob backdrop from album art palette. No video files needed. */
+function GradientBackdrop({ colors }) {
+  const palette = (colors && colors.length > 0) ? colors : [[20, 20, 50], [10, 15, 40]];
+  const blobs = [
+    { c: palette[0], x: '12%',  y: '45%', s: '75vmax', delay: '0s',   dur: '14s' },
+    { c: palette[1] || palette[0], x: '78%',  y: '18%', s: '65vmax', delay: '-5s',  dur: '17s' },
+    { c: palette[2] || palette[0], x: '50%',  y: '80%', s: '58vmax', delay: '-9s',  dur: '11s' },
+    { c: palette[3] || palette[1] || palette[0], x: '32%', y: '12%', s: '48vmax', delay: '-3s',  dur: '15s' },
+  ];
+  return (
+    <div className="gradient-backdrop" aria-hidden="true">
+      {blobs.map((b, i) => (
+        <div key={i} className="gradient-backdrop__blob" style={{
+          left: b.x, top: b.y, width: b.s, height: b.s,
+          background: `radial-gradient(circle, rgba(${b.c[0]},${b.c[1]},${b.c[2]},0.6) 0%, transparent 70%)`,
+          animationDelay: b.delay,
+          animationDuration: b.dur,
+        }} />
+      ))}
+      <div className="gradient-backdrop__vignette" />
+    </div>
+  );
+}
 
 function MainApp() {
   const getValidToken = useSpotifyToken();
@@ -20,18 +42,16 @@ function MainApp() {
           durationMs, error, player: sdkPlayer } = playerHook;
 
   const [lyricsState, setLyricsState] = useState({ synced: null, plain: null });
-  const [preset, setPreset] = useState(null);
+  const [palette, setPalette] = useState([]);
   const [hasTransferred, setHasTransferred] = useState(false);
   const [liveProgressMs, setLiveProgressMs] = useState(0);
   const syncRef = useRef({ progressMs: 0, timestamp: 0 });
 
-  // Sync anchor whenever SDK gives a fresh position
   useEffect(() => {
     syncRef.current = { progressMs, timestamp: Date.now() };
     setLiveProgressMs(progressMs);
   }, [progressMs]);
 
-  // Interpolate at 100ms so lyrics track smoothly between SDK updates
   useEffect(() => {
     if (!isPlaying) return;
     const id = setInterval(() => {
@@ -62,8 +82,7 @@ function MainApp() {
       .then(r => { if (!cancelled) setLyricsState(r); })
       .catch(() => { if (!cancelled) setLyricsState({ synced: null, plain: null }); });
     extractDominantColors(currentTrack.albumArt)
-      .then(colors => resolveTrackPreset(currentTrack, colors))
-      .then(resolved => { if (!cancelled) setPreset(resolved); });
+      .then(colors => { if (!cancelled) setPalette(colors); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);
@@ -93,14 +112,14 @@ function MainApp() {
       <div className="state-message">
         {isReady
           ? 'Connected. Start playing something on Spotify.'
-          : 'Connecting to Spotify\u2026'}
+          : 'Connecting to Spotify…'}
       </div>
     );
   }
 
   return (
     <div className="drift-stage">
-      <SceneBackground scene={preset?.scene} />
+      <GradientBackdrop colors={palette} />
       <NowPlayingBar
         track={currentTrack}
         isPlaying={isPlaying}

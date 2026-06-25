@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import './App.css';
 import { isLoggedIn } from './auth/config';
 import { useSpotifyToken } from './auth/useSpotifyToken';
@@ -23,8 +23,29 @@ function MainApp() {
   const [preset, setPreset] = useState(null);
   const [hasTransferred, setHasTransferred] = useState(false);
 
+  // Live interpolated progress — updates every 100ms so lyrics stay
+  // in sync even though the SDK state only fires every 500ms.
+  const [liveProgressMs, setLiveProgressMs] = useState(0);
+  const syncRef = useRef({ progressMs: 0, timestamp: 0 });
+
   const { currentTrack, isReady, deviceId, isPlaying, progressMs, durationMs, error,
           player: sdkPlayer } = playerHook;
+
+  // Keep syncRef up to date whenever the SDK gives us a fresh position.
+  useEffect(() => {
+    syncRef.current = { progressMs, timestamp: Date.now() };
+    setLiveProgressMs(progressMs);
+  }, [progressMs]);
+
+  // Tick every 100ms while playing to interpolate position between SDK updates.
+  useEffect(() => {
+    if (!isPlaying) return;
+    const id = setInterval(() => {
+      const { progressMs: base, timestamp } = syncRef.current;
+      setLiveProgressMs(base + (Date.now() - timestamp));
+    }, 100);
+    return () => clearInterval(id);
+  }, [isPlaying]);
 
   useEffect(() => {
     if (isReady && deviceId && !hasTransferred) {
@@ -54,8 +75,8 @@ function MainApp() {
   }, [currentTrack?.id]);
 
   const activeLyricIndex = useMemo(
-    () => getActiveLyricIndex(lyricsState.synced, progressMs),
-    [lyricsState.synced, progressMs]
+    () => getActiveLyricIndex(lyricsState.synced, liveProgressMs),
+    [lyricsState.synced, liveProgressMs]
   );
 
   const handleToggleView = useCallback(() => {

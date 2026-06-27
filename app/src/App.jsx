@@ -1,100 +1,117 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { isLoggedIn } from './auth/config';
-import { useMouseIdle } from './components/useMouseIdle';
 import { useSpotifyToken } from './auth/useSpotifyToken';
 import { useSpotifyPlayer, transferPlaybackHere } from './spotify/useSpotifyPlayer';
 import { fetchLyrics, getActiveLyricIndex } from './lyrics/lrclib';
 import { extractDominantColors } from './scenes/extractColors';
 import { logPlayEvent } from './spotify/playEventLog';
-
 import { LoginScreen } from './components/LoginScreen';
 import { CallbackScreen } from './components/CallbackScreen';
-import { GradientBackdrop } from './components/GradientBackdrop';
-import { TitleMoment } from './components/TitleMoment';
 import { LyricsOverlay } from './components/LyricsOverlay';
 import { NowPlayingBar } from './components/NowPlayingBar';
-import { PlaybackControls } from './components/PlaybackControls';
 
-const TITLE_MOMENT_DURATION_MS = 2200;
-const DEFAULT_CHROME_COLOR = '#8b8578';
+/** Animated color-blob backdrop derived from album art palette. */
+function GradientBackdrop({ colors }) {
+  const palette = (colors && colors.length > 0) ? colors : [[80, 40, 130], [30, 60, 120], [100, 30, 80]];
+  const blobs = [
+    { c: palette[0], x: '12%',  y: '45%', s: '75vmax', delay: '0s',   dur: '14s' },
+    { c: palette[1] || palette[0], x: '78%',  y: '18%', s: '65vmax', delay: '-5s',  dur: '17s' },
+    { c: palette[2] || palette[0], x: '50%',  y: '80%', s: '58vmax', delay: '-9s',  dur: '11s' },
+    { c: palette[3] || palette[1] || palette[0], x: '32%', y: '12%', s: '48vmax', delay: '-3s', dur: '15s' },
+  ];
+  return (
+    <div className="gradient-backdrop" aria-hidden="true">
+      {blobs.map((b, i) => (
+        <div key={i} className="gradient-backdrop__blob" style={{
+          left: b.x, top: b.y, width: b.s, height: b.s,
+          background: `radial-gradient(circle, rgba(${b.c[0]},${b.c[1]},${b.c[2]},0.6) 0%, transparent 70%)`,
+          animationDelay: b.delay,
+          animationDuration: b.dur,
+        }} />
+      ))}
+      <div className="gradient-backdrop__vignette" />
+    </div>
+  );
+}
 
 function MainApp() {
   const getValidToken = useSpotifyToken();
-  const player = useSpotifyPlayer(getValidToken);
+  const playerHook = useSpotifyPlayer(getValidToken);
+  const { currentTrack, isReady, deviceId, isPlaying, progressMs,
+          durationMs, error, player: sdkPlayer, connect } = playerHook;
 
   const [lyricsState, setLyricsState] = useState({ synced: null, plain: null });
   const [palette, setPalette] = useState([]);
-  const [showTitleMoment, setShowTitleMoment] = useState(false);
   const [hasTransferred, setHasTransferred] = useState(false);
+  const [liveProgressMs, setLiveProgressMs] = useState(0);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
-  const isControlsActive = useMouseIdle(3000);
-  const titleTimerRef = useRef(null);
-
-  const {
-    currentTrack,
-    isReady,
-    deviceId,
-    isPlaying,
-    progressMs,
-    durationMs,
-    error,
-    togglePlay,
-    nextTrack,
-    previousTrack,
-    seek,
-  } = player;
-
-  const handleTogglePlay = useCallback(() => {
-    togglePlay();
-  }, [togglePlay]);
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState(null);
+  const syncRef = useRef({ progressMs: 0, timestamp: 0 });
 
   useEffect(() => {
-    if (isReady && deviceId && audioUnlocked && !hasTransferred) {
+    syncRef.current = { progressMs, timestamp: Date.now() };
+    setLiveProgressMs(progressMs);
+  }, [progressMs]);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const id = setInterval(() => {
+      const { progressMs: base, timestamp } = syncRef.current;
+      setLiveProgressMs(base + (Date.now() - timestamp));
+    }, 100);
+    return () => clearInterval(id);
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (isReady && deviceId && !hasTransferred) {
       transferPlaybackHere(getValidToken, deviceId)
         .then(() => setHasTransferred(true))
         .catch(() => {});
     }
-  }, [isReady, deviceId, audioUnlocked, hasTransferred, getValidToken]);
+  }, [isReady, deviceId, hasTransferred, getValidToken]);
 
   useEffect(() => {
     if (!currentTrack) return;
-
     logPlayEvent('track_started', currentTrack);
-
     let cancelled = false;
-
     fetchLyrics({
       trackName: currentTrack.name,
       artistName: currentTrack.artists[0],
       albumName: currentTrack.albumName,
       durationSec: durationMs / 1000,
     })
-      .then((r) => { if (!cancelled) setLyricsState(r); })
+      .then(r => { if (!cancelled) setLyricsState(r); })
       .catch(() => { if (!cancelled) setLyricsState({ synced: null, plain: null }); });
-
-    extractDominantColors(currentTrack.albumArt).then((colors) => {
-      if (!cancelled) setPalette(colors);
-    });
-
-    setShowTitleMoment(true);
-    clearTimeout(titleTimerRef.current);
-    titleTimerRef.current = setTimeout(() => {
-      setShowTitleMoment(false);
-    }, TITLE_MOMENT_DURATION_MS);
-
+    extractDominantColors(currentTrack.albumArt)
+      .then(colors => { if (!cancelled) setPalette(colors && colors.length > 0 ? colors : [[80,40,130],[30,60,120],[100,30,80]]); })
+      .catch(() => { if (!cancelled) setPalette([[80,40,130],[30,60,120],[100,30,80]]); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);
 
-  useEffect(() => () => clearTimeout(titleTimerRef.current), []);
-
   const activeLyricIndex = useMemo(
-    () => getActiveLyricIndex(lyricsState.synced, progressMs),
-    [lyricsState.synced, progressMs]
+    () => getActiveLyricIndex(lyricsState.synced, liveProgressMs),
+    [lyricsState.synced, liveProgressMs]
   );
 
-  const chromeColor = palette[0] ? lightenForChrome(palette[0]) : DEFAULT_CHROME_COLOR;
+  const handleTogglePlay = useCallback(() => {
+    sdkPlayer?.togglePlay();
+  }, [sdkPlayer]);
+
+  const handleUnlock = useCallback(async () => {
+    setUnlocking(true);
+    setUnlockError(null);
+    try {
+      await connect();
+      setAudioUnlocked(true);
+    } catch (err) {
+      setUnlockError(err);
+    } finally {
+      setUnlocking(false);
+    }
+  }, [connect]);
 
   if (error) {
     return (
@@ -107,17 +124,22 @@ function MainApp() {
     );
   }
 
-  if (isReady && !audioUnlocked) {
+  if (!audioUnlocked) {
     return (
       <div className="state-message state-message--unlock">
-        <p>Connected to Spotify.</p>
-        <button className="state-message__unlock-button" onClick={() => setAudioUnlocked(true)}>
-          Start listening
+        <p>drift</p>
+        <button
+          className="state-message__unlock-button"
+          onClick={handleUnlock}
+          disabled={unlocking}
+        >
+          {unlocking ? 'Connecting…' : 'Start listening'}
         </button>
-        <p className="state-message__hint">
-          One click to let this tab play audio — after this, you can control playback from your
-          phone or anywhere else as usual.
-        </p>
+        {unlockError && (
+          <p style={{ color: '#e07a5f', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+            {unlockError.message}
+          </p>
+        )}
       </div>
     );
   }
@@ -126,77 +148,43 @@ function MainApp() {
     return (
       <div className="state-message">
         {isReady
-          ? 'Connected. Start playing something on Spotify to bring Drift to life.'
+          ? 'Connected. Start playing something on Spotify.'
           : 'Connecting to Spotify…'}
       </div>
     );
   }
 
   return (
-    <div className={`drift-stage ${isControlsActive ? '' : 'drift-stage--idle'}`}>
-      <GradientBackdrop colors={palette} albumArtUrl={currentTrack.albumArt} />
+    <div className="drift-stage">
+      <GradientBackdrop colors={palette} />
       <NowPlayingBar
         track={currentTrack}
         isPlaying={isPlaying}
         onTogglePlay={handleTogglePlay}
-        chromeColor={chromeColor}
       />
-
-      {showTitleMoment ? (
-        <TitleMoment track={currentTrack} chromeColor={chromeColor} />
-      ) : (
-        <LyricsOverlay
-          syncedLines={lyricsState.synced}
-          activeIndex={activeLyricIndex}
-          plainFallback={lyricsState.plain}
-        />
-      )}
-
-      <PlaybackControls
-        isPlaying={isPlaying}
-        progressMs={progressMs}
-        durationMs={durationMs}
-        onTogglePlay={togglePlay}
-        onNext={nextTrack}
-        onPrevious={previousTrack}
-        onSeek={seek}
+      <LyricsOverlay
+        syncedLines={lyricsState.synced}
+        activeIndex={activeLyricIndex}
+        plainFallback={lyricsState.plain}
       />
     </div>
   );
-}
-
-function lightenForChrome(hex) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const mix = (channel) => Math.round(channel + (255 - channel) * 0.55);
-  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
 function App() {
   const [route, setRoute] = useState(() =>
     new URLSearchParams(window.location.search).has('code') ||
     new URLSearchParams(window.location.search).has('error')
-      ? 'callback'
-      : 'home'
+      ? 'callback' : 'home'
   );
   const [loggedIn, setLoggedIn] = useState(isLoggedIn);
 
   if (route === 'callback') {
     return (
-      <CallbackScreen
-        onComplete={() => {
-          setLoggedIn(true);
-          setRoute('home');
-        }}
-      />
+      <CallbackScreen onComplete={() => { setLoggedIn(true); setRoute('home'); }} />
     );
   }
-
-  if (!loggedIn) {
-    return <LoginScreen />;
-  }
-
+  if (!loggedIn) return <LoginScreen />;
   return <MainApp />;
 }
 

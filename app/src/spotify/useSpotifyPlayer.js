@@ -21,11 +21,7 @@ export function useSpotifyPlayer(getValidToken) {
   const [isReady, setIsReady] = useState(false);
   const [playerState, setPlayerState] = useState(null);
   const [error, setError] = useState(null);
-  const [tickedProgressMs, setTickedProgressMs] = useState(0);
   const playerRef = useRef(null);
-  const lastStateUpdateRef = useRef({ position: 0, timestamp: Date.now() });
-  const getValidTokenRef = useRef(getValidToken);
-  getValidTokenRef.current = getValidToken;
 
   const lastTrackIdRef = useRef(null);
   const lastPausedRef = useRef(null);
@@ -54,13 +50,13 @@ export function useSpotifyPlayer(getValidToken) {
         });
         player.addListener('not_ready', () => setIsReady(false));
         player.addListener('initialization_error', ({ message }) =>
-          setError(new Error(`SDK init error: ${message}`))
+          setError(new Error('SDK init error: ' + message))
         );
         player.addListener('authentication_error', ({ message }) =>
-          setError(new Error(`SDK auth error: ${message}`))
+          setError(new Error('SDK auth error: ' + message))
         );
         player.addListener('account_error', ({ message }) =>
-          setError(new Error(`SDK account error (Premium required): ${message}`))
+          setError(new Error('SDK account error (Premium required): ' + message))
         );
 
         player.addListener('player_state_changed', (state) => {
@@ -76,13 +72,13 @@ export function useSpotifyPlayer(getValidToken) {
             lastPausedRef.current = newPaused;
             lastPositionUpdateRef.current = now;
             setPlayerState(state);
-            lastStateUpdateRef.current = { position: state.position, timestamp: Date.now() };
-            setTickedProgressMs(state.position);
           }
         });
 
+        // Set ref so the returned connect() can call player.connect() on demand
         playerRef.current = player;
-        await player.connect();
+        // NOTE: player.connect() is NOT called here — it is triggered by the
+        // user gesture via handleUnlock in App.jsx to satisfy autoplay policy.
       } catch (err) {
         setError(err);
       }
@@ -96,20 +92,6 @@ export function useSpotifyPlayer(getValidToken) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!playerState || playerState.paused) return;
-
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - lastStateUpdateRef.current.timestamp;
-      setTickedProgressMs(Math.min(
-        lastStateUpdateRef.current.position + elapsed,
-        playerState.duration
-      ));
-    }, 250);
-
-    return () => clearInterval(interval);
-  }, [playerState]);
-
   const track = playerState?.track_window?.current_track ?? null;
 
   return {
@@ -117,7 +99,7 @@ export function useSpotifyPlayer(getValidToken) {
     isReady,
     error,
     isPlaying: playerState ? !playerState.paused : false,
-    progressMs: tickedProgressMs,
+    progressMs: playerState?.position ?? 0,
     durationMs: playerState?.duration ?? 0,
     currentTrack: track ? {
       id: track.id,
@@ -127,26 +109,28 @@ export function useSpotifyPlayer(getValidToken) {
       albumArt: track.album.images?.[0]?.url ?? null,
     } : null,
     player: playerRef.current,
+    connect: async () => {
+      if (!playerRef.current) {
+        throw new Error('Player not yet created — try again in a moment.');
+      }
+      await playerRef.current.connect();
+    },
     togglePlay: () => playerRef.current?.togglePlay(),
     nextTrack: async () => {
-      const token = await getValidTokenRef.current();
+      const token = await getValidToken();
       await fetch('https://api.spotify.com/v1/me/player/next', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: 'Bearer ' + token },
       });
     },
     previousTrack: async () => {
-      const token = await getValidTokenRef.current();
+      const token = await getValidToken();
       await fetch('https://api.spotify.com/v1/me/player/previous', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: 'Bearer ' + token },
       });
     },
-    seek: (positionMs) => {
-      lastStateUpdateRef.current = { position: positionMs, timestamp: Date.now() };
-      setTickedProgressMs(positionMs);
-      playerRef.current?.seek(positionMs);
-    },
+    seek: (positionMs) => playerRef.current?.seek(positionMs),
   };
 }
 
@@ -155,7 +139,7 @@ export async function transferPlaybackHere(getValidToken, deviceId) {
   await fetch('https://api.spotify.com/v1/me/player', {
     method: 'PUT',
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: 'Bearer ' + token,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ device_ids: [deviceId], play: true }),

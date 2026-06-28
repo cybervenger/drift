@@ -1,70 +1,85 @@
 /**
- * Loads an image and samples pixels via canvas to find dominant colors.
- * Pure client-side, no network call beyond loading the image itself —
- * this is the "instant, always works" backdrop layer for mood/palette.
+ * Extracts dominant colors from an album art URL.
  *
- * Returns an array of hex color strings, most prominent first. Includes
- * basic diversity filtering so the palette isn't 4 near-identical shades
- * of the same color (which looks flat in a gradient mesh).
+ * Primary path: loads the image with crossOrigin = 'anonymous' and samples
+ * pixels via canvas. This works when the CDN sends CORS headers.
+ *
+ * Fallback: if the canvas is tainted (no CORS headers) or the load fails,
+ * derives a deterministic 4-color palette from the image URL string so every
+ * track still gets a unique-looking backdrop.
+ *
+ * Returns an array of [r, g, b] arrays, most prominent first.
  */
-export async function extractDominantColors(imageUrl, sampleSize = 24, paletteSize = 4) {
-  if (!imageUrl) return [];
 
-  const img = await loadImage(imageUrl);
-
-  const canvas = document.createElement('canvas');
-  canvas.width = sampleSize;
-  canvas.height = sampleSize;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
-
-  const { data } = ctx.getImageData(0, 0, sampleSize, sampleSize);
-  const buckets = new Map();
-
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    // Quantize to reduce near-duplicate colors into the same bucket.
-    const key = `${Math.round(r / 24)}-${Math.round(g / 24)}-${Math.round(b / 24)}`;
-    const existing = buckets.get(key);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      buckets.set(key, { count: 1, rgb: [r, g, b] });
-    }
-  }
-
-  const sorted = [...buckets.values()].sort((a, b) => b.count - a.count);
-
-  // Greedily pick colors that are reasonably distinct from ones already
-  // chosen, so the palette has actual variety for a gradient mesh rather
-  // than 4 shades of the same hue.
-  const palette = [];
-  for (const candidate of sorted) {
-    if (palette.length >= paletteSize) break;
-    const isDistinct = palette.every((chosen) => colorDistance(chosen.rgb, candidate.rgb) > 40);
-    if (isDistinct || palette.length === 0) {
-      palette.push(candidate);
-    }
-  }
-
-  // Pad with the most prominent color again if we couldn't find enough
-  // distinct ones (e.g. a near-monochrome album cover) — better than
-  // returning fewer colors than the mesh expects.
-  while (palette.length < paletteSize && sorted.length > 0) {
-    palette.push(sorted[palette.length % sorted.length]);
-  }
-
-  return palette.map(({ rgb }) => rgbToHex(rgb));
+function hslToRgb(h, s, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if      (h < 60)  { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) {         g = c; b = x; }
+  else if (h < 240) {         g = x; b = c; }
+  else if (h < 300) { r = x;         b = c; }
+  else              { r = c;          b = x; }
+  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
 }
 
-function colorDistance([r1, g1, b1], [r2, g2, b2]) {
-  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+/** Deterministic palette from any string — used when canvas extraction fails. */
+function hashPalette(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  }
+  h = Math.abs(h);
+  const base = h % 360;
+  return [
+    hslToRgb(base,              0.70, 0.38),
+    hslToRgb((base + 120) % 360, 0.60, 0.33),
+    hslToRgb((base + 240) % 360, 0.65, 0.35),
+    hslToRgb((base +  60) % 360, 0.55, 0.30),
+  ];
 }
 
-function rgbToHex([r, g, b]) {
-  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+export async function extractDominantColors(imageUrl, sampleSize = 8) {
+  if (!imageUrl) return hashPalette('drift-default');
+
+  try {
+    const img = await loadImage(imageUrl);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = sampleSize;
+    canvas.height = sampleSize;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+
+    let data;
+    try {
+      data = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+    } catch {
+      // Canvas tainted by cross-origin image — use hash fallback
+      return hashPalette(imageUrl);
+    }
+
+    const buckets = new Map();
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const key = Math.round(r / 24) + '-' + Math.round(g / 24) + '-' + Math.round(b / 24);
+      const ex = buckets.get(key);
+      if (ex) ex.count += 1;
+      else buckets.set(key, { count: 1, rgb: [r, g, b] });
+    }
+
+    const colors = [...buckets.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4)
+      .map(e => e.rgb);
+
+    return colors.length > 0 ? colors : hashPalette(imageUrl);
+  } catch {
+    // Image failed to load entirely
+    return hashPalette(imageUrl);
+  }
 }
 
 function loadImage(url) {

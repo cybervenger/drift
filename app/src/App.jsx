@@ -85,8 +85,8 @@ function MainApp() {
       .then(r => { if (!cancelled) setLyricsState(r); })
       .catch(() => { if (!cancelled) setLyricsState({ synced: null, plain: null }); });
     extractDominantColors(currentTrack.albumArt)
-      .then(colors => { if (!cancelled) setPalette(colors && colors.length > 0 ? colors : [[80,40,130],[30,60,120],[100,30,80]]); })
-      .catch(() => { if (!cancelled) setPalette([[80,40,130],[30,60,120],[100,30,80]]); });
+      .then(colors => { if (!cancelled) setPalette(colors); })
+      .catch(() => {});
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id]);

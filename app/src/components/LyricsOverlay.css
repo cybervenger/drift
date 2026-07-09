@@ -1,5 +1,7 @@
 /* =============================================
-   LyricsOverlay — 3-line karaoke display
+   LyricsOverlay — scrollable, Drift-style karaoke
+   Current line: large + bright
+   Past / future: small + dimmed
    ============================================= */
 
 .lyrics-overlay {
@@ -7,59 +9,89 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 0 8% 8% 8%;
   z-index: 10;
-  pointer-events: none;
 }
 
-/* ── Karaoke: prev / current / next ────────── */
-.lyrics-overlay--karaoke {
-  gap: 0;
+/* ── Scrollable container ───────────────────── */
+.lyrics-overlay--scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Top & bottom fade so text dissolves at edges */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 15%,
+    black 80%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 15%,
+    black 80%,
+    transparent 100%
+  );
 }
+.lyrics-overlay--scroll::-webkit-scrollbar { display: none; }
 
+/* Spacer so first/last lines can reach center */
+.lyrics-overlay__pad { height: 42vh; flex-shrink: 0; }
+
+/* ── Every lyric line ───────────────────────── */
 .lyrics-overlay__line {
-  font-size: clamp(1.6rem, 5.5vw, 3rem);
-  font-weight: 700;
-  line-height: 1.25;
-  padding: 0.25rem 0;
+  display: block;
+  padding: 0.18rem 8%;
   cursor: pointer;
   user-select: none;
-  pointer-events: auto;
-  transition: color 0.35s ease, opacity 0.35s ease, transform 0.35s ease;
-  will-change: color, opacity, transform;
+  transition:
+    font-size   0.3s ease,
+    color       0.3s ease,
+    opacity     0.3s ease,
+    font-weight 0.3s ease,
+    transform   0.3s ease;
+  will-change: font-size, color, opacity, transform;
+  line-height: 1.25;
 }
 
+.lyrics-overlay__line:hover {
+  opacity: 1 !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Current — big, white, bold */
 .lyrics-overlay__line--current {
+  font-size: clamp(1.65rem, 5.5vw, 3rem);
+  font-weight: 800;
   color: #ffffff;
   opacity: 1;
-  transform: scale(1.02);
+  transform: scale(1.01);
   transform-origin: left center;
 }
 
-.lyrics-overlay__line--prev,
-.lyrics-overlay__line--next {
-  color: rgba(255, 255, 255, 0.32);
-  opacity: 1;
+/* Past — small, dimmed */
+.lyrics-overlay__line--past {
+  font-size: clamp(0.95rem, 3vw, 1.6rem);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 1);
+  opacity: 0.3;
   transform: scale(1);
 }
 
-.lyrics-overlay__line--prev:hover,
-.lyrics-overlay__line--next:hover {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.lyrics-overlay__line--hidden {
-  opacity: 0;
-  pointer-events: none;
+/* Future — slightly less dim than past */
+.lyrics-overlay__line--future {
+  font-size: clamp(0.95rem, 3vw, 1.6rem);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 1);
+  opacity: 0.35;
+  transform: scale(1);
 }
 
 /* ── Plain-text fallback ────────────────────── */
 .lyrics-overlay--plain {
   overflow-y: auto;
   scrollbar-width: none;
-  pointer-events: auto;
+  padding: 2rem 8%;
 }
 .lyrics-overlay--plain::-webkit-scrollbar { display: none; }
 .lyrics-overlay__plain-text {
@@ -75,7 +107,6 @@
 .lyrics-overlay--none {
   align-items: center;
   justify-content: center;
-  pointer-events: none;
 }
 .lyrics-overlay__none-text {
   color: rgba(255, 255, 255, 0.35);

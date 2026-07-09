@@ -1,6 +1,26 @@
+import { useEffect, useRef } from 'react';
 import './LyricsOverlay.css';
 
-export function LyricsOverlay({ syncedLines, activeIndex, plainFallback }) {
+export function LyricsOverlay({ syncedLines, activeIndex, plainFallback, onSeek }) {
+  const containerRef = useRef(null);
+  const activeLineRef = useRef(null);
+  const userScrollingRef = useRef(false);
+  const scrollTimerRef = useRef(null);
+
+  // Auto-scroll active line to center — pause if user is manually scrolling
+  useEffect(() => {
+    if (userScrollingRef.current) return;
+    activeLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [activeIndex]);
+
+  const handleScroll = () => {
+    userScrollingRef.current = true;
+    clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      userScrollingRef.current = false;
+    }, 3000);
+  };
+
   if (!syncedLines && !plainFallback) {
     return (
       <div className="lyrics-overlay lyrics-overlay--none">
@@ -12,36 +32,38 @@ export function LyricsOverlay({ syncedLines, activeIndex, plainFallback }) {
   if (!syncedLines) {
     return (
       <div className="lyrics-overlay lyrics-overlay--plain">
-        <p className="lyrics-overlay__plain-text">{plainFallback}</p>
+        <pre className="lyrics-overlay__plain-text">{plainFallback}</pre>
       </div>
     );
   }
 
-  const prev = activeIndex > 0 ? syncedLines[activeIndex - 1] : null;
-  const current = activeIndex >= 0 ? syncedLines[activeIndex] : null;
-  const next =
-    activeIndex >= -1 && activeIndex + 1 < syncedLines.length
-      ? syncedLines[activeIndex + 1]
-      : null;
-
   return (
-    <div className="lyrics-overlay">
-      {prev?.text && (
-        <p key={`prev-${prev.timeMs}`} className="lyrics-overlay__line lyrics-overlay__line--prev">
-          {prev.text}
-        </p>
-      )}
-      <p
-        key={`cur-${current?.timeMs ?? activeIndex}`}
-        className="lyrics-overlay__line lyrics-overlay__line--current"
-      >
-        {current?.text || '\u00A0'}
-      </p>
-      {next?.text && (
-        <p key={`next-${next.timeMs}`} className="lyrics-overlay__line lyrics-overlay__line--next">
-          {next.text}
-        </p>
-      )}
+    <div
+      className="lyrics-overlay lyrics-overlay--scroll"
+      ref={containerRef}
+      onScroll={handleScroll}
+    >
+      <div className="lyrics-overlay__pad" />
+      {syncedLines.map((line, i) => {
+        const isActive = i === activeIndex;
+        const isPast = i < activeIndex;
+        return (
+          <p
+            key={line.timeMs}
+            ref={isActive ? activeLineRef : null}
+            className={[
+              'lyrics-overlay__line',
+              isActive ? 'lyrics-overlay__line--current'
+              : isPast  ? 'lyrics-overlay__line--past'
+              :           'lyrics-overlay__line--future',
+            ].join(' ')}
+            onClick={() => onSeek?.(line.timeMs)}
+          >
+            {line.text || '\u00A0'}
+          </p>
+        );
+      })}
+      <div className="lyrics-overlay__pad" />
     </div>
   );
 }

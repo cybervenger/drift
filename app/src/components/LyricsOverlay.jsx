@@ -1,26 +1,6 @@
-import { useEffect, useRef } from 'react';
 import './LyricsOverlay.css';
 
 export function LyricsOverlay({ syncedLines, activeIndex, plainFallback, onSeek }) {
-  const containerRef = useRef(null);
-  const activeLineRef = useRef(null);
-  const userScrollingRef = useRef(false);
-  const scrollTimerRef = useRef(null);
-
-  // Auto-scroll active line to center — pause if user is manually scrolling
-  useEffect(() => {
-    if (userScrollingRef.current) return;
-    activeLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [activeIndex]);
-
-  const handleScroll = () => {
-    userScrollingRef.current = true;
-    clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = setTimeout(() => {
-      userScrollingRef.current = false;
-    }, 3000);
-  };
-
   if (!syncedLines && !plainFallback) {
     return (
       <div className="lyrics-overlay lyrics-overlay--none">
@@ -37,33 +17,30 @@ export function LyricsOverlay({ syncedLines, activeIndex, plainFallback, onSeek 
     );
   }
 
+  const prev = activeIndex > 0 ? syncedLines[activeIndex - 1] : null;
+  const curr = activeIndex >= 0 ? syncedLines[activeIndex] : null;
+  const next = activeIndex < syncedLines.length - 1 ? syncedLines[activeIndex + 1] : null;
+
   return (
-    <div
-      className="lyrics-overlay lyrics-overlay--scroll"
-      ref={containerRef}
-      onScroll={handleScroll}
-    >
-      <div className="lyrics-overlay__pad" />
-      {syncedLines.map((line, i) => {
-        const isActive = i === activeIndex;
-        const isPast = i < activeIndex;
-        return (
-          <p
-            key={line.timeMs}
-            ref={isActive ? activeLineRef : null}
-            className={[
-              'lyrics-overlay__line',
-              isActive ? 'lyrics-overlay__line--current'
-              : isPast  ? 'lyrics-overlay__line--past'
-              :           'lyrics-overlay__line--future',
-            ].join(' ')}
-            onClick={() => onSeek?.(line.timeMs)}
-          >
-            {line.text || '\u00A0'}
-          </p>
-        );
-      })}
-      <div className="lyrics-overlay__pad" />
+    <div className="lyrics-overlay lyrics-overlay--karaoke">
+      <p
+        className={'lyrics-overlay__line lyrics-overlay__line--prev' + (prev ? '' : ' lyrics-overlay__line--hidden')}
+        onClick={() => prev && onSeek?.(prev.timeMs)}
+      >
+        {prev?.text || '\u00A0'}
+      </p>
+      <p
+        className="lyrics-overlay__line lyrics-overlay__line--current"
+        onClick={() => curr && onSeek?.(curr.timeMs)}
+      >
+        {curr?.text || '\u00A0'}
+      </p>
+      <p
+        className={'lyrics-overlay__line lyrics-overlay__line--next' + (next ? '' : ' lyrics-overlay__line--hidden')}
+        onClick={() => next && onSeek?.(next.timeMs)}
+      >
+        {next?.text || '\u00A0'}
+      </p>
     </div>
   );
 }

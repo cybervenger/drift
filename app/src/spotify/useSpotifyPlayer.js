@@ -22,7 +22,6 @@ export function useSpotifyPlayer(getValidToken) {
   const [playerState, setPlayerState] = useState(null);
   const [error, setError] = useState(null);
   const playerRef = useRef(null);
-
   const lastTrackIdRef = useRef(null);
   const lastPausedRef = useRef(null);
   const lastPositionUpdateRef = useRef(0);
@@ -38,8 +37,7 @@ export function useSpotifyPlayer(getValidToken) {
         const player = new Spotify.Player({
           name: 'Drift',
           getOAuthToken: async (callback) => {
-            try { callback(await getValidToken()); }
-            catch (err) { setError(err); }
+            try { callback(await getValidToken()); } catch (err) { setError(err); }
           },
           volume: 0.8,
         });
@@ -50,41 +48,39 @@ export function useSpotifyPlayer(getValidToken) {
         });
         player.addListener('not_ready', () => setIsReady(false));
         player.addListener('initialization_error', ({ message }) =>
-          setError(new Error('SDK init error: ' + message))
-        );
+          setError(new Error('SDK init error: ' + message)));
         player.addListener('authentication_error', ({ message }) =>
-          setError(new Error('SDK auth error: ' + message))
-        );
+          setError(new Error('SDK auth error: ' + message)));
         player.addListener('account_error', ({ message }) =>
-          setError(new Error('SDK account error (Premium required): ' + message))
-        );
+          setError(new Error('SDK account error (Premium required): ' + message)));
 
         player.addListener('player_state_changed', (state) => {
           if (!state) return;
-          const newTrackId = state.track_window?.current_track?.id;
-          const newPaused = state.paused;
-          const trackChanged = newTrackId !== lastTrackIdRef.current;
-          const pauseChanged = newPaused !== lastPausedRef.current;
           const now = Date.now();
-          const positionDue = now - lastPositionUpdateRef.current >= 500;
-          if (trackChanged || pauseChanged || positionDue) {
-            lastTrackIdRef.current = newTrackId;
-            lastPausedRef.current = newPaused;
+          const trackId = state.track_window?.current_track?.id;
+          const paused = state.paused;
+          if (
+            trackId !== lastTrackIdRef.current ||
+            paused !== lastPausedRef.current ||
+            now - lastPositionUpdateRef.current > 500
+          ) {
+            lastTrackIdRef.current = trackId;
+            lastPausedRef.current = paused;
             lastPositionUpdateRef.current = now;
             setPlayerState(state);
           }
         });
 
-        // Set ref so the returned connect() can call player.connect() on demand
+        // Set ref BEFORE connect so it's available when 'ready' fires
         playerRef.current = player;
-        // NOTE: player.connect() is NOT called here — it is triggered by the
-        // user gesture via handleUnlock in App.jsx to satisfy autoplay policy.
+        // connect() is NOT called here — must come from a user gesture (handleUnlock in App.jsx)
       } catch (err) {
-        setError(err);
+        if (!cancelled) setError(err);
       }
     }
 
     init();
+
     return () => {
       cancelled = true;
       playerRef.current?.disconnect();
@@ -101,21 +97,22 @@ export function useSpotifyPlayer(getValidToken) {
     isPlaying: playerState ? !playerState.paused : false,
     progressMs: playerState?.position ?? 0,
     durationMs: playerState?.duration ?? 0,
-    currentTrack: track ? {
-      id: track.id,
-      name: track.name,
-      artists: track.artists.map((a) => a.name),
-      albumName: track.album.name,
-      albumArt: track.album.images?.[0]?.url ?? null,
-    } : null,
+    currentTrack: track
+      ? {
+          id: track.id,
+          name: track.name,
+          artists: track.artists.map((a) => a.name),
+          albumName: track.album.name,
+          albumArt: track.album.images?.[0]?.url ?? null,
+        }
+      : null,
     player: playerRef.current,
     connect: async () => {
-      if (!playerRef.current) {
-        throw new Error('Player not yet created — try again in a moment.');
-      }
+      if (!playerRef.current) throw new Error('Player not yet created — try again in a moment.');
       await playerRef.current.connect();
     },
     togglePlay: () => playerRef.current?.togglePlay(),
+    seek: (positionMs) => playerRef.current?.seek(positionMs),
     nextTrack: async () => {
       const token = await getValidToken();
       await fetch('https://api.spotify.com/v1/me/player/next', {
@@ -130,7 +127,6 @@ export function useSpotifyPlayer(getValidToken) {
         headers: { Authorization: 'Bearer ' + token },
       });
     },
-    seek: (positionMs) => playerRef.current?.seek(positionMs),
   };
 }
 

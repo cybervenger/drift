@@ -7,7 +7,6 @@ export function LyricsOverlay({ syncedLines, activeIndex, plainFallback, onSeek 
   const userScrollingRef = useRef(false);
   const scrollTimerRef = useRef(null);
 
-  // Auto-scroll active line to center; pause when user scrolls manually
   useEffect(() => {
     if (userScrollingRef.current) return;
     activeLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -16,9 +15,7 @@ export function LyricsOverlay({ syncedLines, activeIndex, plainFallback, onSeek 
   const handleScroll = () => {
     userScrollingRef.current = true;
     clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = setTimeout(() => {
-      userScrollingRef.current = false;
-    }, 3000);
+    scrollTimerRef.current = setTimeout(() => { userScrollingRef.current = false; }, 3000);
   };
 
   if (!syncedLines && !plainFallback) {
@@ -45,18 +42,18 @@ export function LyricsOverlay({ syncedLines, activeIndex, plainFallback, onSeek 
     >
       <div className="lyrics-overlay__pad" />
       {syncedLines.map((line, i) => {
-        const isActive = i === activeIndex;
-        const isPast = i < activeIndex;
+        const dist = i - activeIndex;
+        let cls;
+        if      (dist === 0)  cls = 'lyrics-overlay__line--current';
+        else if (dist === -1) cls = 'lyrics-overlay__line--prev';
+        else if (dist === 1)  cls = 'lyrics-overlay__line--next';
+        else                  cls = 'lyrics-overlay__line--far';
+
         return (
           <p
             key={line.timeMs}
-            ref={isActive ? activeLineRef : null}
-            className={[
-              'lyrics-overlay__line',
-              isActive ? 'lyrics-overlay__line--current'
-              : isPast  ? 'lyrics-overlay__line--past'
-              :           'lyrics-overlay__line--future',
-            ].join(' ')}
+            ref={dist === 0 ? activeLineRef : null}
+            className={'lyrics-overlay__line ' + cls}
             onClick={() => onSeek?.(line.timeMs)}
           >
             {line.text || '\u00A0'}
